@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Satellite, CloudRain, Sprout } from "lucide-react";
-import heroImage from "@/assets/hero-agriculture.jpg";
+import satelliteBackground from "@/assets/satellite-background.jpg";
 
 const Hero = () => {
   return (
@@ -8,11 +8,11 @@ const Hero = () => {
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
-          src={heroImage}
-          alt="Modern agricultural technology with AI monitoring"
+          src={satelliteBackground}
+          alt="Satellite view of agricultural farmland"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-background/60"></div>
+        <div className="absolute inset-0 bg-primary/20"></div>
       </div>
       
       {/* Content */}  
