@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Satellite, CloudRain, Sprout } from "lucide-react";
 import satelliteBackground from "@/assets/satellite-background.jpg";
+import { Link } from "react-router-dom";
 
 const Hero = () => {
   return (
@@ -29,13 +30,13 @@ const Hero = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            <Button variant="hero" size="lg" className="text-lg px-8">
+            <Link to="/crop-analysis"><Button variant="hero" size="lg" className="text-lg px-8">
               Start Analysis
               <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button variant="outline" size="lg" className="text-lg px-8">
+            </Button></Link>
+            <Link to="/watch-demo"><Button variant="outline" size="lg" className="text-lg px-8">
               Watch Demo
-            </Button>
+            </Button></Link>
           </div>
           
           {/* Features Grid */}
