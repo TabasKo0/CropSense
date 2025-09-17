@@ -4,13 +4,13 @@ import satelliteBackground from "@/assets/satellite-background.jpg";
 
 const Hero = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="min-h-[90vh] flex items-center justify-center overflow-hidden " >
       {/* Background Image */}
-      <div className="absolute inset-0 z-0">
+      <div className="fixed inset-0 z-0">
         <img
           src={satelliteBackground}
           alt="Satellite view of agricultural farmland"
-          className="w-full h-full object-cover"
+          className="fixed w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-primary/20"></div>
       </div>
