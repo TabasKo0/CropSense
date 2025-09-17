@@ -24,7 +24,8 @@ const Profile = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('authToken');
-        const response = await fetch('http://localhost:3001/api/auth/profile', {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+        const response = await fetch(`${apiBaseUrl}/api/auth/profile`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

@@ -8,6 +8,8 @@ import cropAnalysisRoutes from './routes/cropAnalysis.js';
 import weatherRoutes from './routes/weather.js';
 import marketplaceRoutes from './routes/marketplace.js';
 import authRoutes from './routes/auth.js';
+import itemsRoutes from './routes/items.js';
+import ordersRoutes from './routes/orders.js';
 
 // Load environment variables
 dotenv.config();
@@ -15,10 +17,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Get allowed origins from environment variables or use defaults
+const allowedOrigins = process.env.CORS_ORIGINS ?
+    process.env.CORS_ORIGINS.split(',') : ['http://localhost:5173', 'http://localhost:3000'];
+
 // Middleware
 app.use(helmet());
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'], // Vite and React dev servers
+    origin: allowedOrigins, // Use environment variable or defaults
     credentials: true
 }));
 app.use(express.json());
@@ -35,6 +41,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/crop-analysis', cropAnalysisRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/items', itemsRoutes);
+app.use('/api/orders', ordersRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

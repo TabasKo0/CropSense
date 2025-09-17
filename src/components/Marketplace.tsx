@@ -1,38 +1,236 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingCart, Star, MapPin, Truck, Shield, Users } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ShoppingCart, Star, MapPin, Truck, Shield, Users, Plus, Package, DollarSign, Mail, Tag } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { itemsAPI } from "@/api/routes/items";
+import { ordersAPI } from "@/api/routes/orders";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
+
+interface Item {
+  id: string;
+  uuid: string;
+  image_link?: string;
+  image_bucket?: string;
+  title: string;
+  desp: string;
+  price: number;
+  contact: string;
+  type: string;
+  qty?: number;
+  created_at: string;
+  updated_at?: string;
+}
 
 const Marketplace = () => {
-  const recommendedSellers = [
-    {
-      name: "GreenHarvest Supplies",
-      rating: 4.9,
-      location: "Iowa, USA",
-      speciality: "Organic Fertilizers",
-      verified: true,
-      products: ["NPK Blends", "Compost", "Bio-stimulants"]
-    },
-    {
-      name: "PrecisionAg Tools",
-      rating: 4.8,
-      location: "Nebraska, USA",
-      speciality: "Smart Equipment",
-      verified: true,
-      products: ["Soil Sensors", "Irrigation Systems", "Drones"]
-    },
-    {
-      name: "Heritage Seeds Co.",
-      rating: 4.7,
-      location: "Kansas, USA",
-      speciality: "Premium Seeds",
-      verified: true,
-      products: ["Corn Seeds", "Soybean Seeds", "Cover Crops"]
+  const { user, token } = useAuth();
+  const { toast } = useToast();
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [addingItem, setAddingItem] = useState(false);
+  const [orderingItems, setOrderingItems] = useState<Set<string>>(new Set());
+  const [itemQuantities, setItemQuantities] = useState<{[key: string]: number}>({});
+  
+  // Form data for adding new item
+  const [formData, setFormData] = useState({
+    title: "",
+    desp: "",
+    price: "",
+    contact: "",
+    type: "",
+    qty: "",
+    image_link: ""
+  });
+
+  // Fetch all items from API using direct Supabase calls
+  const fetchItems = async () => {
+    try {
+      setLoading(true);
+      const result = await itemsAPI.getItems();
+      
+      if (result.success) {
+        console.log('Fetched items:', result.items);
+        console.log('First item structure:', result.items?.[0]);
+        console.log('First item keys:', result.items?.[0] ? Object.keys(result.items[0]) : 'No items');
+        setItems(result.items || []);
+      } else {
+        setError(result.error || 'Failed to load items');
+      }
+    } catch (err) {
+      console.error('Error fetching items:', err);
+      setError('Failed to load marketplace items');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  // Add new item using direct Supabase calls
+  const handleAddItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      setError('You must be logged in to add items');
+      return;
+    }
+
+    setAddingItem(true);
+    try {
+      const result = await itemsAPI.addItem({
+        title: formData.title,
+        desp: formData.desp,
+        price: parseFloat(formData.price),
+        contact: formData.contact,
+        type: formData.type,
+        qty: formData.qty ? parseInt(formData.qty) : null,
+        image_link: formData.image_link || null
+      }, user.id);
+      
+      if (result.success) {
+        // Reset form and close dialog
+        setFormData({
+          title: "", desp: "", price: "", contact: "", type: "", qty: "", image_link: ""
+        });
+        setIsAddDialogOpen(false);
+        // Refresh items list
+        fetchItems();
+      } else {
+        setError(result.error || 'Failed to add item');
+      }
+    } catch (err) {
+      console.error('Error adding item:', err);
+      setError('Failed to add item');
+    } finally {
+      setAddingItem(false);
+    }
+  };
+
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  // Handle select changes
+  const handleSelectChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      type: value
+    }));
+  };
+
+  // Handle quantity changes for each item
+  const updateQuantity = (itemId: string, newQuantity: number, maxQuantity?: number) => {
+    if (newQuantity >= 1 && (!maxQuantity || newQuantity <= maxQuantity)) {
+      setItemQuantities(prev => ({
+        ...prev,
+        [itemId]: newQuantity
+      }));
+    }
+  };
+
+  const handleQuantityInputChange = (itemId: string, value: string, maxQuantity?: number) => {
+    const numValue = parseInt(value);
+    if (!isNaN(numValue) && numValue >= 1) {
+      const clampedValue = maxQuantity ? Math.min(numValue, maxQuantity) : numValue;
+      setItemQuantities(prev => ({
+        ...prev,
+        [itemId]: clampedValue
+      }));
+    } else if (value === '') {
+      // Allow empty string temporarily for editing
+      setItemQuantities(prev => ({
+        ...prev,
+        [itemId]: 1
+      }));
+    }
+  };
+
+  const getItemQuantity = (itemId: string) => {
+    return itemQuantities[itemId] || 1;
+  };
+
+  // Handle order placement
+  const handleOrder = async (itemId: string) => {
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to place an order.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Add item to ordering state
+    setOrderingItems(prev => new Set(prev).add(itemId));
+    console.log('Placing order for item:', itemId, 'Quantity:', getItemQuantity(itemId));
+    console.log('Item object:', items.find(item => (item.uuid || item.id) === itemId));
+    try {
+      const selectedQuantity = getItemQuantity(itemId);
+      const result = await ordersAPI.placeOrder({
+        item_id: itemId,
+        qty: selectedQuantity,
+        additional_notes: null
+      }, user.id);
+
+      if (result.success) {
+        toast({
+          title: "Order Placed Successfully!",
+          description: `Ordered ${selectedQuantity} item(s). ${result.message || "Your order has been placed."}`,
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Order Failed",
+          description: result.error || "Failed to place order.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error('Error placing order:', err);
+      toast({
+        title: "Order Failed",
+        description: "An error occurred while placing your order.",
+        variant: "destructive",
+      });
+    } finally {
+      // Remove item from ordering state
+      setOrderingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(itemId);
+        return newSet;
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  if (loading) {
+    return (
+      <section id="marketplace" className="relative top-[-10vh] h-[105vh] py-20 bg-gradient-sky bottom-0">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading marketplace...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section id="marketplace" className="relative top-[-10vh] h-[105vh] py-20 bg-gradient-sky bottom-0">
+    <section id="marketplace" className="relative h-100 py-5 bg-gradient-sky ">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-2 mb-4" style={{transform:"translateY(5vh)",marginBottom:"6vh"}}>
@@ -42,69 +240,290 @@ const Marketplace = () => {
             </h2>
           </div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Connect with verified suppliers recommended by our AI based on your crop analysis
+            Buy and sell agricultural products with fellow farmers
           </p>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-          {recommendedSellers.map((seller, index) => (
-            <Card key={index} className="shadow-strong hover:shadow-xl transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg mb-2">{seller.name}</CardTitle>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="text-sm font-medium">{seller.rating}</span>
-                      </div>
-                      {seller.verified && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Shield className="h-3 w-3 mr-1" />
-                          Verified
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
-                      {seller.location}
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Badge variant="outline" className="mb-3">
-                    {seller.speciality}
-                  </Badge>
-                  <div className="space-y-2">
-                    <h4 className="font-medium text-sm">Popular Products:</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {seller.products.map((product, idx) => (
-                        <span
-                          key={idx}
-                          className="bg-primary/10 text-primary px-2 py-1 rounded text-xs"
-                        >
-                          {product}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+
+        {/* Add Item Button and Error Display */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-4">
+            <h3 className="text-2xl font-semibold">Available Items ({items.length})</h3>
+            {error && (
+              <Badge variant="destructive" className="text-sm">
+                {error}
+              </Badge>
+            )}
+          </div>
+          
+          {user && (
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="hero" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add New Item to Marketplace</DialogTitle>
+                  <DialogDescription>
+                    List your agricultural products for other farmers to purchase.
+                  </DialogDescription>
+                </DialogHeader>
                 
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Truck className="h-4 w-4 mr-1" />
-                    Get Quote
-                  </Button>
-                  <Button variant="default" size="sm" className="flex-1">
-                    View Store
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                <form onSubmit={handleAddItem} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Title *</Label>
+                      <Input
+                        id="title"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        placeholder="e.g., Fresh Tomatoes"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Price ($) *</Label>
+                      <Input
+                        id="price"
+                        name="price"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.price}
+                        onChange={handleInputChange}
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="desp">Description *</Label>
+                    <Textarea
+                      id="desp"
+                      name="desp"
+                      value={formData.desp}
+                      onChange={handleInputChange}
+                      placeholder="Describe your product..."
+                      rows={3}
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="type">Type *</Label>
+                      <Select value={formData.type} onValueChange={handleSelectChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="seeds">Seeds</SelectItem>
+                          <SelectItem value="fertilizer">Fertilizer</SelectItem>
+                          <SelectItem value="tools">Tools</SelectItem>
+                          <SelectItem value="vegetables">Vegetables</SelectItem>
+                          <SelectItem value="fruits">Fruits</SelectItem>
+                          <SelectItem value="grains">Grains</SelectItem>
+                          <SelectItem value="equipment">Equipment</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="qty">Quantity (optional)</Label>
+                      <Input
+                        id="qty"
+                        name="qty"
+                        type="number"
+                        min="1"
+                        value={formData.qty}
+                        onChange={handleInputChange}
+                        placeholder="Available quantity"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contact">Contact Info *</Label>
+                      <Input
+                        id="contact"
+                        name="contact"
+                        value={formData.contact}
+                        onChange={handleInputChange}
+                        placeholder="Email or phone number"
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="image_link">Image URL (optional)</Label>
+                      <Input
+                        id="image_link"
+                        name="image_link"
+                        type="url"
+                        value={formData.image_link}
+                        onChange={handleInputChange}
+                        placeholder="https://example.com/image.jpg"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsAddDialogOpen(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      variant="hero" 
+                      disabled={addingItem}
+                      className="flex-1"
+                    >
+                      {addingItem ? "Adding..." : "Add Item"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
+        
+        {/* Items Grid */}
+        {items.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+            {items.map((item) => (
+              <Card key={item.uuid || item.id} className="shadow-strong hover:shadow-xl transition-shadow">
+                <CardHeader className="pb-3">
+                  {item.image_link && (
+                    <div className="w-full h-48 mb-3 rounded-lg overflow-hidden bg-gray-100">
+                      <img 
+                        src={item.image_link} 
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <CardTitle className="text-lg mb-2 line-clamp-2">{item.title}</CardTitle>
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge variant="outline" className="text-xs">
+                      <Tag className="h-3 w-3 mr-1" />
+                      {item.type}
+                    </Badge>
+                    <span className="text-lg font-bold text-primary">
+                      ₹{item.price.toFixed(2)}
+                    </span>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground line-clamp-3">
+                    {item.desp}
+                  </p>
+                  
+                  <div className="space-y-2">
+                    {item.qty && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Package className="h-3 w-3 text-muted-foreground" />
+                        <span>Qty: {item.qty}</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-3 w-3 text-muted-foreground" />
+                      <span className="truncate">{item.contact}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Quantity Selection */}
+                  <div className="flex items-center justify-between pt-2 pb-2">
+                    <span className="text-sm font-medium">Quantity:</span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => updateQuantity(item.uuid || item.id, getItemQuantity(item.uuid || item.id) - 1, item.qty)}
+                        disabled={getItemQuantity(item.uuid || item.id) <= 1}
+                      >
+                        -
+                      </Button>
+                      <Input
+                        type="number"
+                        min="1"
+                        max={item.qty || undefined}
+                        value={getItemQuantity(item.uuid || item.id)}
+                        onChange={(e) => handleQuantityInputChange(item.uuid || item.id, e.target.value, item.qty)}
+                        className="w-16 text-center font-medium h-8 px-1"
+                        onBlur={(e) => {
+                          // Ensure minimum value of 1 on blur
+                          if (!e.target.value || parseInt(e.target.value) < 1) {
+                            updateQuantity(item.uuid || item.id, 1, item.qty);
+                          }
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => updateQuantity(item.uuid || item.id, getItemQuantity(item.uuid || item.id) + 1, item.qty)}
+                        disabled={item.qty && getItemQuantity(item.uuid || item.id) >= item.qty}
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 pt-2">
+                    <Button variant="outline" size="sm" className="flex-1">
+                      <Mail className="h-4 w-4 mr-1" />
+                      Contact
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleOrder(item.uuid || item.id)}
+                      disabled={orderingItems.has(item.uuid || item.id)}
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-1" />
+                      {orderingItems.has(item.uuid || item.id) 
+                        ? "Ordering..." 
+                        : `Order (${getItemQuantity(item.uuid || item.id)})`
+                      }
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No Items Available</h3>
+            <p className="text-muted-foreground mb-4">
+              Be the first to list an item in the marketplace!
+            </p>
+            {user && (
+              <Button variant="hero" onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add First Item
+              </Button>
+            )}
+          </div>
+        )}
         
         {/* Marketplace Features */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -113,7 +532,7 @@ const Marketplace = () => {
               <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
               <h3 className="font-semibold mb-2">Secure Transactions</h3>
               <p className="text-sm text-muted-foreground">
-                All payments protected with enterprise-grade security
+                All transactions protected with enterprise-grade security
               </p>
             </CardContent>
           </Card>
@@ -121,9 +540,9 @@ const Marketplace = () => {
           <Card className="text-center shadow-soft">
             <CardContent className="pt-6">
               <Truck className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">Fast Delivery</h3>
+              <h3 className="font-semibold mb-2">Local Delivery</h3>
               <p className="text-sm text-muted-foreground">
-                Quick shipping from local and regional suppliers
+                Connect with farmers in your area for quick delivery
               </p>
             </CardContent>
           </Card>
@@ -131,21 +550,15 @@ const Marketplace = () => {
           <Card className="text-center shadow-soft">
             <CardContent className="pt-6">
               <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold mb-2">Verified Sellers</h3>
+              <h3 className="font-semibold mb-2">Farmer Community</h3>
               <p className="text-sm text-muted-foreground">
-                Only authenticated agricultural suppliers
+                Join a trusted network of agricultural professionals
               </p>
             </CardContent>
           </Card>
         </div>
-        
-        <div className="text-center">
-          <Button variant="hero" size="lg" className="px-8">
-            <ShoppingCart className="mr-2 h-5 w-5" />
-            Connect Supabase for Full Marketplace
-          </Button>
-        </div>
       </div>
+      <Toaster />
     </section>
   );
 };

@@ -1,9 +1,64 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Shield, AlertTriangle, Lock, FileText, Phone, Mail } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Shield, AlertTriangle, Phone, Mail, Clock, Users, Lock, FileText } from "lucide-react";
 
 const Cybersecurity = () => {
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    urgency: "",
+    contactPhone: ""
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handleUrgencyChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      urgency: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    // Simulate form submission
+    setTimeout(() => {
+      setIsSubmitting(false);
+      alert("Support request submitted successfully!");
+      setFormData({
+        title: "",
+        description: "",
+        urgency: "",
+        contactPhone: ""
+      });
+    }, 2000);
+  };
+
+  const getUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case "high": return "destructive";
+      case "medium": return "default";
+      case "low": return "secondary";
+      default: return "outline";
+    }
+  };
+
   return (
     <section id="security" className="relative mt-[-5vh] py-20 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -11,116 +66,256 @@ const Cybersecurity = () => {
           <div className="flex items-center justify-center gap-2 mb-4">
             <Shield className="h-8 w-8 text-primary" />
             <h2 className="text-4xl md:text-5xl font-bold text-foreground">
-              Cybersecurity Center
+              Cybersecurity Support Center
             </h2>
           </div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Protecting agricultural data and helping farmers stay safe from cyber threats
+            Get immediate help with security threats, data breaches, and cyber incidents
           </p>
         </div>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Report Scams */}
-          <Card className="shadow-strong border-destructive/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <AlertTriangle className="h-5 w-5" />
-                Report Agricultural Scams
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  Help protect the farming community by reporting suspicious activities
-                </AlertDescription>
-              </Alert>
-              
-              <div className="space-y-3">
-                <div className="p-3 bg-destructive/10 rounded-lg">
-                  <h4 className="font-medium mb-1">Common Agricultural Scams:</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Fake fertilizer/seed suppliers</li>
-                    <li>• Equipment financing fraud</li>
-                    <li>• False crop insurance claims</li>
-                    <li>• Phishing emails targeting farmers</li>
-                  </ul>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+          {/* Main Support Form */}
+          <div className="lg:col-span-2">
+            <Card className="shadow-strong">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  Submit Security Support Request
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Title */}
+                  <div className="space-y-2">
+                    <Label htmlFor="title" className="text-base font-medium">
+                      Incident Title *
+                    </Label>
+                    <Input
+                      id="title"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      placeholder="Brief description of the security issue"
+                      required
+                      className="text-base"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description" className="text-base font-medium">
+                      Detailed Description *
+                    </Label>
+                    <Textarea
+                      id="description"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      placeholder="Please provide as much detail as possible about the security incident, including when it occurred, what systems are affected, and any steps you've already taken..."
+                      rows={6}
+                      required
+                      className="text-base resize-none"
+                    />
+                  </div>
+
+                  {/* Urgency Selector */}
+                  <div className="space-y-4">
+                    <Label className="text-base font-medium">
+                      Urgency Level *
+                    </Label>
+                    <RadioGroup 
+                      value={formData.urgency} 
+                      onValueChange={handleUrgencyChange}
+                      className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+                    >
+                      <Label htmlFor="high" className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors">
+                        <RadioGroupItem value="high" id="high" />
+                        <div className="flex items-center gap-2 flex-1">
+                          <div className="w-3 h-3 bg-destructive rounded-full"></div>
+                          <div>
+                            <div className="font-medium">High Priority</div>
+                            <div className="text-sm text-muted-foreground">Active threat or breach</div>
+                          </div>
+                        </div>
+                      </Label>
+                      
+                      <Label htmlFor="medium" className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors">
+                        <RadioGroupItem value="medium" id="medium" />
+                        <div className="flex items-center gap-2 flex-1">
+                          <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                          <div>
+                            <div className="font-medium">Medium Priority</div>
+                            <div className="text-sm text-muted-foreground">Potential security risk</div>
+                          </div>
+                        </div>
+                      </Label>
+                      
+                      <Label htmlFor="low" className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-accent/50 cursor-pointer transition-colors">
+                        <RadioGroupItem value="low" id="low" />
+                        <div className="flex items-center gap-2 flex-1">
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          <div>
+                            <div className="font-medium">Low Priority</div>
+                            <div className="text-sm text-muted-foreground">General security inquiry</div>
+                          </div>
+                        </div>
+                      </Label>
+                    </RadioGroup>
+                    {formData.urgency && (
+                      <Badge variant={getUrgencyColor(formData.urgency)} className="w-fit">
+                        {formData.urgency.toUpperCase()} PRIORITY
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Contact Information */}
+                  <div className="space-y-2">
+                    <Label htmlFor="contactPhone" className="text-base font-medium">
+                      Contact Phone Number *
+                    </Label>
+                    <Input
+                      id="contactPhone"
+                      name="contactPhone"
+                      type="tel"
+                      value={formData.contactPhone}
+                      onChange={handleInputChange}
+                      placeholder="Your phone number for contact"
+                      required
+                      className="text-base"
+                    />
+                  </div>
+
+                  <Button 
+                    type="submit" 
+                    className="w-full text-base py-6"
+                    disabled={isSubmitting}
+                    variant="default"
+                  >
+                    {isSubmitting ? "Submitting Request..." : "Submit Security Request"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Emergency Call Button & Info */}
+          <div className="space-y-6">
+            {/* Emergency Call */}
+            <Card className="shadow-strong border-destructive/20 bg-destructive/5">
+              <CardHeader className="text-center">
+                <CardTitle className="text-destructive">
+                  Emergency Response
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-center space-y-4">
+                <Phone className="h-16 w-16 text-destructive mx-auto" />
+                <div>
+                  <h3 className="text-2xl font-bold text-destructive mb-2">
+                    CALL NOW
+                  </h3>
+                  <p className="text-lg font-mono text-destructive mb-4">
+                    1-800-CYBER-911
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    24/7 Emergency Hotline for active cyber threats
+                  </p>
                 </div>
-                
-                <Button variant="destructive" className="w-full">
-                  <FileText className="mr-2 h-4 w-4" />
-                  File a Scam Report
+                <Button 
+                  variant="destructive" 
+                  size="lg"
+                  className="w-full text-lg py-6 font-bold"
+                  onClick={() => window.open('tel:1-800-CYBER-911')}
+                >
+                  <Phone className="mr-2 h-6 w-6" />
+                  EMERGENCY CALL
                 </Button>
-              </div>
+              </CardContent>
+            </Card>
+
+            {/* Response Times */}
+            <Card className="shadow-strong">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  Response Times
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg">
+                  <span className="font-medium text-destructive">High Priority</span>
+                  <Badge variant="destructive">15 minutes</Badge>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
+                  <span className="font-medium text-orange-700">Medium Priority</span>
+                  <Badge className="bg-orange-500">2 hours</Badge>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <span className="font-medium text-green-700">Low Priority</span>
+                  <Badge className="bg-green-500">24 hours</Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Contact Info */}
+            <Card className="shadow-strong">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-primary" />
+                  Other Ways to Reach Us
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <p className="font-medium">Email Support</p>
+                  <p className="text-sm text-muted-foreground">security@cropsense.com</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-medium">Business Hours</p>
+                  <p className="text-sm text-muted-foreground">Mon-Fri: 8AM-8PM EST</p>
+                  <p className="text-sm text-muted-foreground">Weekends: 9AM-5PM EST</p>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-medium">Security Team</p>
+                  <p className="text-sm text-muted-foreground">Certified cybersecurity experts</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Security Information Footer */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="shadow-soft">
+            <CardContent className="pt-6 text-center">
+              <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Data Protection</h3>
+              <p className="text-sm text-muted-foreground">
+                Your information is encrypted and handled with the highest security standards
+              </p>
             </CardContent>
           </Card>
           
-          {/* Security Measures */}
-          <Card className="shadow-strong border-primary/20">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-primary">
-                <Lock className="h-5 w-5" />
-                Data Protection Measures
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <h4 className="font-medium mb-2">Our Security Features:</h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span>256-bit Encryption</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span>Secure API Calls</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span>Data Anonymization</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span>Regular Audits</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="p-3 bg-accent/20 rounded-lg">
-                  <h4 className="font-medium mb-1">GDPR Compliant</h4>
-                  <p className="text-sm text-muted-foreground">
-                    All agricultural data is processed in compliance with privacy regulations
-                  </p>
-                </div>
-              </div>
+          <Card className="shadow-soft">
+            <CardContent className="pt-6 text-center">
+              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Expert Team</h3>
+              <p className="text-sm text-muted-foreground">
+                Our certified cybersecurity professionals are here to help you 24/7
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card className="shadow-soft">
+            <CardContent className="pt-6 text-center">
+              <Lock className="h-12 w-12 text-primary mx-auto mb-4" />
+              <h3 className="font-semibold mb-2">Confidential</h3>
+              <p className="text-sm text-muted-foreground">
+                All support requests are handled with complete confidentiality
+              </p>
             </CardContent>
           </Card>
         </div>
-        
-        {/* Help & Support */}
-        <Card className="shadow-strong">
-          <CardHeader>
-            <CardTitle className="text-center">Need Help or Support?</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="text-center p-6 bg-muted rounded-lg">
-                <Phone className="h-8 w-8 text-primary mx-auto mb-3" />
-                <h4 className="font-medium mb-2">Emergency Hotline</h4>
-                <p className="text-muted-foreground mb-3">24/7 support for urgent security issues</p>
-                <Button variant="outline">Call Now</Button>
-              </div>
-              
-              <div className="text-center p-6 bg-muted rounded-lg">
-                <Mail className="h-8 w-8 text-primary mx-auto mb-3" />
-                <h4 className="font-medium mb-2">Email Support</h4>
-                <p className="text-muted-foreground mb-3">Get help from our cybersecurity experts</p>
-                <Button variant="outline">Contact Us</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </section>
   );

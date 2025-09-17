@@ -71,7 +71,7 @@ export interface WeatherHistorical {
 
 class WeatherService {
   private apiKey: string;
-  private baseUrl: string = 'https://api.openweathermap.org/data/2.5';
+  private baseUrl: string = import.meta.env.VITE_OPENWEATHER_BASE_URL || 'https://api.openweathermap.org/data/2.5';
   private cache: Map<string, { data: any; timestamp: number }> = new Map();
 
   constructor() {

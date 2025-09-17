@@ -22,7 +22,7 @@ export interface ApiConfig {
  * Default API configuration
  */
 export const defaultConfig: ApiConfig = {
-  baseUrl: 'http://localhost:3001',
+  baseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
