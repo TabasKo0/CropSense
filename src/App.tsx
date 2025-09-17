@@ -9,7 +9,7 @@ import Cybersecurity from "./pages/Cybersecurity";
 import Marketplace from "./pages/Marketplace";
 import NotFound from "./pages/NotFound";
 import Header from "./components/Header";
-
+import SoilMap from "./pages/SoilMap";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -25,6 +25,7 @@ const App = () => (
             <Route path="/crop-analysis" element={<CropAnalysis />} />
             <Route path="/cybersecurity" element={<Cybersecurity />} />
             <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/soil-map" element={<SoilMap />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
