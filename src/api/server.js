@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import cropAnalysisRoutes from './routes/cropAnalysis.js';
 import weatherRoutes from './routes/weather.js';
 import marketplaceRoutes from './routes/marketplace.js';
+import authRoutes from './routes/auth.js';
 
 // Load environment variables
 dotenv.config();
@@ -30,6 +31,7 @@ app.use((req, res, next) => {
 });
 
 // API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/crop-analysis', cropAnalysisRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
@@ -51,6 +53,7 @@ app.get('/', (req, res) => {
         version: '1.0.0',
         endpoints: {
             health: '/health',
+            auth: '/api/auth',
             cropAnalysis: '/api/crop-analysis',
             weather: '/api/weather',
             marketplace: '/api/marketplace'

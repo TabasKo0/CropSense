@@ -169,6 +169,42 @@ export class MarketplaceAPI {
 }
 
 /**
+ * Authentication API utilities
+ */
+export class AuthAPI {
+  static async signup(username: string, email: string, password: string) {
+    return apiRequest('/api/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ username, email, password }),
+    });
+  }
+
+  static async signin(username: string, password: string) {
+    return apiRequest('/api/auth/signin', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+  }
+
+  static async getProfile(token: string) {
+    return apiRequest('/api/auth/profile', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  }
+
+  static async logout(token: string) {
+    return apiRequest('/api/auth/logout', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+  }
+}
+
+/**
  * Error handling utility
  */
 export function handleApiError(error: any): string {
@@ -235,6 +271,7 @@ export default {
   CropAnalysisAPI,
   WeatherAPI,
   MarketplaceAPI,
+  AuthAPI,
   buildQueryString,
   handleApiError,
   isValidApiResponse,
