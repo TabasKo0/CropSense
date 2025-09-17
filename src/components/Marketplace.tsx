@@ -32,10 +32,10 @@ const Marketplace = () => {
   ];
 
   return (
-    <section id="marketplace" className="py-20 bg-gradient-sky">
+    <section id="marketplace" className="relative top-[-10vh] h-[105vh] py-20 bg-gradient-sky bottom-0">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="flex items-center justify-center gap-2 mb-4" style={{transform:"translateY(5vh)",marginBottom:"6vh"}}>
             <ShoppingCart className="h-8 w-8 text-primary" />
             <h2 className="text-4xl md:text-5xl font-bold text-foreground">
               Agricultural Marketplace
