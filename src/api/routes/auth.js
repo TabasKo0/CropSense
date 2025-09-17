@@ -2,17 +2,57 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 const router = express.Router();
 
-// Supabase configuration
-const SUPABASE_URL = "https://nyxmlsbfjmpycttacdzx.supabase.co";
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55eG1sc2Jmam1weWN0dGFjZHp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcyNjM2NjQsImV4cCI6MjA3MjgzOTY2NH0.tV0hr8yJbTz1m5Yq1oqF6dPJyrgeg3SBz-uYq95F_a8";
+// Configuration validation function
+const validateEnvironmentConfig = () => {
+    const requiredVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'JWT_SECRET'];
+    const missing = requiredVars.filter(varName => !process.env[varName]);
+    
+    if (missing.length > 0) {
+        throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    }
+    
+    if (process.env.JWT_SECRET.length < 32) {
+        console.warn('⚠️  Warning: JWT_SECRET should be at least 32 characters long for security');
+    }
+    
+    console.log('✅ Environment configuration validated successfully');
+};
+
+// Validate configuration on module load
+validateEnvironmentConfig();
+
+// Supabase configuration - Now using environment variables
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+// Validate required environment variables
+if (!SUPABASE_URL) {
+    throw new Error('SUPABASE_URL environment variable is required');
+}
+
+if (!SUPABASE_SERVICE_KEY) {
+    throw new Error('SUPABASE_SERVICE_KEY environment variable is required');
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-// JWT secret
-const JWT_SECRET = process.env.JWT_SECRET || 'cropsense-jwt-secret-key';
+// JWT secret - Now using environment variable with validation
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required');
+}
+
+if (JWT_SECRET.length < 32) {
+    console.warn('Warning: JWT_SECRET should be at least 32 characters long for security');
+}
 
 // Helper function to generate JWT token
 const generateToken = (user) => {
