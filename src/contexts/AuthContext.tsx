@@ -1,17 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
-  username: string;
+  username?: string;
   email: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (userData: { user: User; token: string }) => void;
+  login: (userData: { user: any; session: any }) => void;
   logout: () => void;
   loading: boolean;
 }
@@ -29,59 +30,50 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const isAuthenticated = !!user && !!token;
 
-  const login = (userData: { user: User; token: string }) => {
-    setUser(userData.user);
-    setToken(userData.token);
-    localStorage.setItem('authToken', userData.token);
-    localStorage.setItem('user', JSON.stringify(userData.user));
+  const login = (userData: { user: any; session: any }) => {
+    const supabaseUser = userData.user;
+    const session = userData.session;
+    
+    const formattedUser: User = {
+      id: supabaseUser.id,
+      username: supabaseUser.user_metadata?.username || supabaseUser.email?.split('@')[0],
+      email: supabaseUser.email || '',
+      createdAt: supabaseUser.created_at
+    };
+    
+    setUser(formattedUser);
+    setToken(session?.access_token || null);
+    localStorage.setItem('authToken', session?.access_token || '');
+    localStorage.setItem('user', JSON.stringify(formattedUser));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setToken(null);
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
-    
-    // Call logout endpoint
-    fetch('http://localhost:3001/api/auth/logout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    }).catch(console.error);
   };
 
   // Check for existing auth on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const storedToken = localStorage.getItem('authToken');
-        const storedUser = localStorage.getItem('user');
-
-        if (storedToken && storedUser) {
-          // Verify token is still valid
-          const response = await fetch('http://localhost:3001/api/auth/profile', {
-            headers: {
-              'Authorization': `Bearer ${storedToken}`
-            }
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success) {
-              setUser(data.data.user);
-              setToken(storedToken);
-            } else {
-              // Token is invalid, clear storage
-              localStorage.removeItem('authToken');
-              localStorage.removeItem('user');
-            }
-          } else {
-            // Token is invalid, clear storage
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
-          }
+        // Get current session from Supabase
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (session && session.user) {
+          const formattedUser: User = {
+            id: session.user.id,
+            username: session.user.user_metadata?.username || session.user.email?.split('@')[0],
+            email: session.user.email || '',
+            createdAt: session.user.created_at
+          };
+          
+          setUser(formattedUser);
+          setToken(session.access_token);
+          localStorage.setItem('authToken', session.access_token);
+          localStorage.setItem('user', JSON.stringify(formattedUser));
         }
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -95,16 +87,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     checkAuth();
 
-    // Listen for auth state changes from other components
-    const handleAuthStateChange = (event: CustomEvent) => {
-      const { user: newUser, token: newToken } = event.detail;
-      login({ user: newUser, token: newToken });
-    };
-
-    window.addEventListener('authStateChange', handleAuthStateChange as EventListener);
+    // Listen for auth state changes from Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const formattedUser: User = {
+          id: session.user.id,
+          username: session.user.user_metadata?.username || session.user.email?.split('@')[0],
+          email: session.user.email || '',
+          createdAt: session.user.created_at
+        };
+        
+        setUser(formattedUser);
+        setToken(session.access_token);
+        localStorage.setItem('authToken', session.access_token);
+        localStorage.setItem('user', JSON.stringify(formattedUser));
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+      }
+    });
 
     return () => {
-      window.removeEventListener('authStateChange', handleAuthStateChange as EventListener);
+      subscription.unsubscribe();
     };
   }, []);
 

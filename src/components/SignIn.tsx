@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, User, Lock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SignInProps {
   onSuccess: (userData: any) => void;
@@ -13,7 +14,7 @@ interface SignInProps {
 
 const SignIn = ({ onSuccess, onSwitchToSignUp }: SignInProps) => {
   const [formData, setFormData] = useState({
-    username: "",
+    email: "",
     password: ""
   });
   const [loading, setLoading] = useState(false);
@@ -33,37 +34,34 @@ const SignIn = ({ onSuccess, onSwitchToSignUp }: SignInProps) => {
     setError("");
 
     // Validation
-    if (!formData.username || !formData.password) {
-      setError("Username and password are required");
+    if (!formData.email || !formData.password) {
+      setError("Email and password are required");
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password
-        }),
+      // Sign in user with Supabase Auth
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
       });
 
-      const data = await response.json();
+      if (error) {
+        setError(error.message);
+        return;
+      }
 
-      if (data.success) {
-        // Store token in localStorage
-        localStorage.setItem('authToken', data.data.token);
-        localStorage.setItem('user', JSON.stringify(data.data.user));
-        onSuccess(data.data);
-      } else {
-        setError(data.error || 'Sign in failed');
+      if (data.user && data.session) {
+        // Successful sign in
+        onSuccess({
+          user: data.user,
+          session: data.session
+        });
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
       console.error('Signin error:', err);
     } finally {
       setLoading(false);
@@ -87,15 +85,15 @@ const SignIn = ({ onSuccess, onSwitchToSignUp }: SignInProps) => {
           )}
           
           <div className="space-y-2">
-            <Label htmlFor="username">Username or Email</Label>
+            <Label htmlFor="email">Email</Label>
             <div className="relative">
               <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                id="username"
-                name="username"
-                type="text"
-                placeholder="Enter your username or email"
-                value={formData.username}
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter your email"
+                value={formData.email}
                 onChange={handleChange}
                 className="pl-10"
                 required

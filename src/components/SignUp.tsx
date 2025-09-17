@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Mail, Lock, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SignUpProps {
   onSuccess: (userData: any) => void;
@@ -53,30 +54,37 @@ const SignUp = ({ onSuccess, onSwitchToSignIn }: SignUpProps) => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password
-        }),
+      // Sign up user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            username: formData.username,
+          }
+        }
       });
 
-      const data = await response.json();
+      if (error) {
+        setError(error.message);
+        return;
+      }
 
-      if (data.success) {
-        // Store token in localStorage
-        localStorage.setItem('authToken', data.data.token);
-        localStorage.setItem('user', JSON.stringify(data.data.user));
-        onSuccess(data.data);
-      } else {
-        setError(data.error || 'Signup failed');
+      if (data.user) {
+        // Check if email confirmation is required
+        if (data.user.email_confirmed_at) {
+          // User is immediately confirmed
+          onSuccess({
+            user: data.user,
+            session: data.session
+          });
+        } else {
+          // Email confirmation required
+          setError("Please check your email and click the confirmation link to activate your account.");
+        }
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
       console.error('Signup error:', err);
     } finally {
       setLoading(false);

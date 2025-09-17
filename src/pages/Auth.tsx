@@ -1,19 +1,30 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import SignIn from "@/components/SignIn";
 import SignUp from "@/components/SignUp";
 import { Leaf } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { login } = useAuth();
+
+  // Check URL params to determine which form to show
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'signup') {
+      setIsSignUp(true);
+    } else if (mode === 'signin') {
+      setIsSignUp(false);
+    }
+  }, [searchParams]);
 
   const handleAuthSuccess = (userData: any) => {
     console.log('Auth successful:', userData);
-    // Dispatch a custom event to notify other components about auth state change
-    window.dispatchEvent(new CustomEvent('authStateChange', { 
-      detail: { user: userData.user, token: userData.token } 
-    }));
+    // Use AuthContext login method
+    login(userData);
     // Redirect to home page
     navigate('/');
   };

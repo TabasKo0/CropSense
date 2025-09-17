@@ -2,19 +2,30 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Leaf, User, LogOut } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSignIn = () => {
-    navigate('/auth');
+    if (location.pathname === '/auth') {
+      // If already on auth page, trigger form switch via URL params
+      navigate('/auth?mode=signin');
+    } else {
+      navigate('/auth?mode=signin');
+    }
   };
 
   const handleGetStarted = () => {
-    navigate('/auth');
+    if (location.pathname === '/auth') {
+      // If already on auth page, trigger form switch via URL params
+      navigate('/auth?mode=signup');
+    } else {
+      navigate('/auth?mode=signup');
+    }
   };
 
   const handleProfile = () => {
@@ -41,6 +52,9 @@ const Header = () => {
             </Link>
             <Link to="/cybersecurity" className="text-foreground hover:text-primary transition-colors">
               Cybersecurity
+            </Link>
+            <Link to="/soil-map" className="text-foreground hover:text-primary transition-colors">
+              Soil Map
             </Link>
             <Link to="/marketplace" className="text-foreground hover:text-primary transition-colors">
               Marketplace
