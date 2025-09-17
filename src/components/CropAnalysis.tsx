@@ -71,7 +71,12 @@ const CropAnalysis = () => {
                     <Thermometer className="h-4 w-4 text-accent-foreground" />
                     <span className="font-medium">Soil NPK</span>
                   </div>
-                  <p className="text-sm text-muted-foreground">Nitrogen, Phosphorus, Potassium levels</p>
+                    <p className="text-sm text-muted-foreground">Nitrogen, Phosphorus, Potassium levels</p>
+                    <input
+                    type="text"
+                    placeholder="Enter NPK values (e.g. 10-5-8)"
+                    className="mt-2 w-full px-2 py-1 rounded border border-muted-foreground bg-background text-sm"
+                    />
                 </div>
                 
                 <div className="p-4 bg-muted rounded-lg">
