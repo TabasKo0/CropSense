@@ -23,7 +23,7 @@ const Hero = () => {
             <span className="text-primary block">Agriculture Intelligence</span>
           </h1>
           
-          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto" style={{color:"#323332ff"}}>
             Optimize your crop yields with advanced AI analysis of soil, weather, and satellite data. 
             Make informed decisions for sustainable farming.
           </p>
