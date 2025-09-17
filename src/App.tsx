@@ -31,6 +31,7 @@ const App = () => (
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/soil-map" element={<SoilMap />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

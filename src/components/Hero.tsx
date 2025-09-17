@@ -20,10 +20,10 @@ const Hero = () => {
         <div className="max-w-4xl mx-auto">
             <div className="relative inline-block mb-6">
             <div className="absolute inset-0 rounded-full blur-xl opacity-40 bg-primary"></div>
-            <h1 className="relative text-5xl md:text-7xl font-bold text-primary leading-tight px-4 py-2">
+            <h1 className="relative text-5xl md:text-7xl font-bold text-white leading-tight px-4 py-2">
               AI-Powered
-              <span className="text-primary block">Agriculture Intelligence</span>
-            </h1><p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto" style={{color:"#a1d1a1ff",fontWeight:"700"}}>
+              <span className="text-white block">Agriculture Intelligence</span>
+            </h1><p className="text-xl md:text-2xl text-grey mb-4 max-w-2xl mx-auto" style={{color:"#ffffffff",fontWeight:"700"}}>
             Optimize your crop yields with advanced AI analysis of soil, weather, and satellite data. 
             Make informed decisions for sustainable farming.
           </p>
