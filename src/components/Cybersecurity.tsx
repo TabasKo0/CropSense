@@ -5,7 +5,7 @@ import { Shield, AlertTriangle, Lock, FileText, Phone, Mail } from "lucide-react
 
 const Cybersecurity = () => {
   return (
-    <section id="security" className="py-20 bg-background">
+    <section id="security" className="relative mt-[-5vh] py-20 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <div className="flex items-center justify-center gap-2 mb-4">
