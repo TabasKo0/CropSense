@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import dbManager from './utils/database.js';
 
 // Import routes
 import cropAnalysisRoutes from './routes/cropAnalysis.js';
@@ -10,12 +11,26 @@ import marketplaceRoutes from './routes/marketplace.js';
 import authRoutes from './routes/auth.js';
 import itemsRoutes from './routes/items.js';
 import ordersRoutes from './routes/orders.js';
+import logRoutes from './routes/log.js';
+import logsRoutes from './routes/logs.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Initialize database
+async function initializeDatabase() {
+    try {
+        await dbManager.connect();
+        await dbManager.initializeSchema();
+        console.log('✅ Database initialized successfully');
+    } catch (error) {
+        console.error('❌ Failed to initialize database:', error);
+        process.exit(1);
+    }
+}
 
 // Get allowed origins from environment variables or use defaults
 const allowedOrigins = process.env.CORS_ORIGINS ?
@@ -43,6 +58,8 @@ app.use('/api/weather', weatherRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/items', itemsRoutes);
 app.use('/api/orders', ordersRoutes);
+app.use('/api/log', logRoutes);
+app.use('/api', logsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -88,10 +105,32 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`🌱 CropSense API server running on port ${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/health`);
-    console.log(`🚀 API documentation: http://localhost:${PORT}/`);
+async function startServer() {
+    await initializeDatabase();
+    
+    app.listen(PORT, () => {
+        console.log(`🌱 CropSense API server running on port ${PORT}`);
+        console.log(`📊 Health check: http://localhost:${PORT}/health`);
+        console.log(`🚀 API documentation: http://localhost:${PORT}/`);
+    });
+}
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+    console.log('\n📤 Gracefully shutting down...');
+    await dbManager.close();
+    process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+    console.log('\n📤 Gracefully shutting down...');
+    await dbManager.close();
+    process.exit(0);
+});
+
+startServer().catch(error => {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
 });
 
 export default app;
