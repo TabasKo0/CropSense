@@ -74,9 +74,8 @@ class SQLiteClient {
             },
 
             signOut: async () => {
-                return this.request('/auth/logout', {
-                    method: 'POST'
-                });
+                localStorage.removeItem('auth_token');
+                return { data: {}, error: null };
             },
 
             getUser: async () => {
@@ -90,6 +89,43 @@ class SQLiteClient {
                         'Authorization': `Bearer ${token}`
                     }
                 });
+            },
+
+            getSession: async () => {
+                const token = localStorage.getItem('auth_token');
+                if (!token) {
+                    return { data: { session: null }, error: null };
+                }
+
+                const userResult = await this.request('/auth/profile', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (userResult.error) {
+                    return { data: { session: null }, error: userResult.error };
+                }
+
+                return {
+                    data: {
+                        session: {
+                            user: userResult.data,
+                            access_token: token
+                        }
+                    },
+                    error: null
+                };
+            },
+
+            onAuthStateChange: (callback: any) => {
+                // Simple implementation for auth state changes
+                // In a real app, you might want to use events or polling
+                callback('INITIAL_SESSION', null);
+                return {
+                    data: { subscription: {} },
+                    unsubscribe: () => {}
+                };
             }
         };
     }
