@@ -17,15 +17,28 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Header from "./components/Header";
 import SoilMap from "./pages/SoilMap";
 import AdminRouteGuard from "./components/admin/AdminRouteGuard";
+import { useEffect } from "react";
+import { initLingo, translatePage } from 'lingator';
+
+declare global {
+  interface Window {
+    google?: any;
+    googleTranslateElementInit?: () => void;
+  }
+}
+
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+const App = () => {
+ 
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
       <AuthProvider>
         <AdminAuthProvider>
           <Toaster />
           <Sonner />
+         
           <BrowserRouter>
             <Routes>
               {/* Admin Routes */}
@@ -34,15 +47,17 @@ const App = () => (
                 path="/admin/dashboard" 
                 element={
                   <AdminRouteGuard>
+                   
                     <AdminDashboard />
                   </AdminRouteGuard>
+                  
                 } 
               />
               
               {/* Regular App Routes */}
               <Route path="/" element={
                 <div className="min-h-screen bg-background">
-                  <Header />
+                  <Header />                
                   <Home />
                 </div>
               } />
@@ -95,6 +110,6 @@ const App = () => (
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
-);
+);}
 
 export default App;

@@ -19,9 +19,8 @@ const AdminDashboard = () => {
     { name: "profiles", label: "Profiles", description: "User profile information" },
     { name: "reports", label: "Reports", description: "User reports and incidents" },
     { name: "proctors", label: "Proctors", description: "Proctor management" },
-    { name: "chat_messages", label: "Chat Messages", description: "Chat system messages" },
-    { name: "audit_logs", label: "Audit Logs", description: "System audit trail" },
-    { name: "match_logs", label: "Match Logs", description: "Matching system logs" }
+  
+
   ];
 
   useEffect(() => {

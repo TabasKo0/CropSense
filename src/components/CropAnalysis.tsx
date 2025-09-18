@@ -185,9 +185,7 @@ const CropAnalysis = () => {
           <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             Intelligent Crop Analysis
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Connect Supabase to unlock AI-powered analysis of your agricultural data
-          </p>
+          
         </div>
         
         <Tabs defaultValue="analysis" className="w-full">
@@ -313,6 +311,29 @@ const CropAnalysis = () => {
                   <div className="p-4 bg-secondary/20 rounded-lg border border-secondary/30">
                     <h4 className="font-medium mb-2">Satellite Imagery</h4>
                     <p className="text-sm text-muted-foreground">Real-time crop monitoring from coordinates</p>
+                    {weatherData?.location && (
+                      <div className="mt-2">
+                        <iframe
+                          title="Live Satellite Map"
+                          width="100%"
+                          height="250"
+                          style={{ border: 0, borderRadius: '8px' }}
+                          loading="lazy"
+                          allowFullScreen
+                          src={`https://www.openstreetmap.org/export/embed.html?bbox=${weatherData.location.lon - 0.05},${weatherData.location.lat - 0.05},${weatherData.location.lon + 0.05},${weatherData.location.lat + 0.05}&layer=mapnik&marker=${weatherData.location.lat},${weatherData.location.lon}`}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          <a
+                            href={`https://www.openstreetmap.org/?mlat=${weatherData.location.lat}&mlon=${weatherData.location.lon}#map=14/${weatherData.location.lat}/${weatherData.location.lon}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline"
+                          >
+                            View interactive map
+                          </a>
+                        </p>
+                      </div>
+                    )}
                     {weather && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Coordinates: {weatherData?.location.lat.toFixed(4)}, {weatherData?.location.lon.toFixed(4)}
@@ -353,17 +374,8 @@ const CropAnalysis = () => {
                     </p>
                   </div>
                   
-                  <div className="p-4 bg-secondary rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">Recommended Crops</span>
-                      <Badge variant="outline">Season: Spring</Badge>
-                    </div>
-                    <div className="flex gap-2 flex-wrap">
-                      <span className="bg-primary/20 text-primary px-2 py-1 rounded text-sm">Tomatoes</span>
-                      <span className="bg-primary/20 text-primary px-2 py-1 rounded text-sm">Corn</span>
-                      <span className="bg-primary/20 text-primary px-2 py-1 rounded text-sm">Soybeans</span>
-                    </div>
-                  </div>
+                  
+                  
                   
                   <div className="p-4 bg-muted rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
