@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AdminUser {
   id: string;
@@ -11,7 +10,7 @@ interface AdminUser {
 interface AdminAuthContextType {
   isAdminAuthenticated: boolean;
   adminUser: AdminUser | null;
-  loginAdmin: (email: string, password: string) => Promise<boolean>;
+  loginAdmin: (username: string, password: string) => Promise<boolean>;
   logoutAdmin: () => Promise<void>;
   loading: boolean;
 }
@@ -29,105 +28,38 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
 
   // Check for existing admin session on mount
   useEffect(() => {
-    const checkAdminAuth = async () => {
+    const checkAdminAuth = () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (session && session.user) {
-          // Check if user has admin role
-          const { data: profile, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-            const adminUser: AdminUser = {
-              id: session.user.id,
-              email: session.user.email || '',
-              full_name: profile.full_name || undefined,
-              role: profile.role
-            };
-            
-            setAdminUser(adminUser);
-            setIsAdminAuthenticated(true);
-          
+        const adminSession = localStorage.getItem('adminSession');
+        if (adminSession) {
+          const adminData = JSON.parse(adminSession);
+          setAdminUser(adminData);
+          setIsAdminAuthenticated(true);
         }
       } catch (error) {
         console.error('Admin auth check failed:', error);
+        localStorage.removeItem('adminSession');
       } finally {
         setLoading(false);
       }
     };
 
     checkAdminAuth();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Check if user has admin role
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-
-        if (!profileError && profile && profile.role === 'admin') {
-          const adminUser: AdminUser = {
-            id: session.user.id,
-            email: session.user.email || '',
-            full_name: profile.full_name || undefined,
-            role: profile.role
-          };
-          
-          setAdminUser(adminUser);
-          setIsAdminAuthenticated(true);
-        } else {
-          // User is not an admin, sign them out
-          await supabase.auth.signOut();
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setAdminUser(null);
-        setIsAdminAuthenticated(false);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
-  const loginAdmin = async (email: string, password: string): Promise<boolean> => {
+  const loginAdmin = async (username: string, password: string): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        console.error('Admin login error:', error);
-        return false;
-      }
-
-      if (data.user) {
-        // Check if user has admin role
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('id, username, email, password_hash, created_at, updated_at')
-          .or(`username.eq.${username},email.eq.${username}`)
-          .single();
-
-        if (profileError || !profile || profile.role !== 'admin') {
-          // User is not an admin, sign them out
-          await supabase.auth.signOut();
-          return false;
-        }
-
+      // Simple credential check: admin/admin
+      if (username === 'admin' && password === 'admin') {
         const adminUser: AdminUser = {
-          id: data.user.id,
-          email: data.user.email || '',
-          full_name: profile.full_name || undefined,
-          role: profile.role
+          id: 'admin-user',
+          email: 'admin@cropsense.com',
+          full_name: 'System Administrator',
+          role: 'admin'
         };
+        
+        // Store session in localStorage
+        localStorage.setItem('adminSession', JSON.stringify(adminUser));
         
         setAdminUser(adminUser);
         setIsAdminAuthenticated(true);
@@ -143,7 +75,7 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
 
   const logoutAdmin = async (): Promise<void> => {
     try {
-      await supabase.auth.signOut();
+      localStorage.removeItem('adminSession');
       setAdminUser(null);
       setIsAdminAuthenticated(false);
     } catch (error) {

@@ -8,9 +8,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Thermometer, Droplets, Zap, Calendar, TrendingUp, Cloud, RefreshCw, Leaf, Camera, BarChart3 } from "lucide-react";
 import { useWeather } from "@/hooks/useWeather";
 import { useEffect, useState } from "react";
+<<<<<<< HEAD
 import { loggingService, LOG_TYPES, logModelSuccess, logModelError } from "@/services/loggingService";
+=======
+import { logAPI } from "@/api/routes/log";
+import { useAuth } from "@/contexts/AuthContext";
+>>>>>>> b936d121ee9ebf67bd484e201dab682e1e2aafa9
 
 const CropAnalysis = () => {
+  // Log type constants (editable)
+  const LOG_TYPES = {
+    CROP_RECOMMENDATION: 'crop-recommendation',
+    DISEASE_DETECTION: 'disease-detection', 
+    YIELD_PREDICTION: 'yield-prediction'
+  };
+
+  // Auth context for user ID
+  const { user } = useAuth();
+
   // Weather API Integration
   // DURATION PARAMETERS: Configure in src/services/weatherService.ts
   // - FORECAST_DAYS: Number of forecast days
@@ -210,6 +225,7 @@ const CropAnalysis = () => {
       });
 
       const result = await response.json();
+<<<<<<< HEAD
 
       // Log successful model call
       await logModelSuccess(
@@ -259,6 +275,41 @@ const CropAnalysis = () => {
       );
 
       setResults(prev => ({ ...prev, model2: 'Error occurred' }));
+=======
+      const output = result.output || 'No output returned';
+      setResults(prev => ({ ...prev, model2: output }));
+      
+      // Log the interaction
+      if (user?.id) {
+        const logEntry = {
+          parameters: { 
+            imageName: model2Form.image.name,
+            imageSize: model2Form.image.size,
+            imageType: model2Form.image.type
+          },
+          response: { output, timestamp: new Date().toISOString() },
+          endpoint: 'http://127.0.0.1:5000/run_model2',
+          status: 'success'
+        };
+        
+        await logAPI.createLog({
+          type: LOG_TYPES.DISEASE_DETECTION,
+          log: `Disease Detection Analysis\n\nImage Details:\n- Name: ${model2Form.image.name}\n- Size: ${(model2Form.image.size / 1024).toFixed(2)} KB\n- Type: ${model2Form.image.type}\n\nResponse:\n${JSON.stringify({ output }, null, 2)}\n\nTimestamp: ${new Date().toLocaleString()}`
+        }, user.id);
+      }
+    } catch (error) {
+      console.error('Model 2 Error:', error);
+      const errorMsg = 'Error occurred';
+      setResults(prev => ({ ...prev, model2: errorMsg }));
+      
+      // Log the error
+      if (user?.id) {
+        await logAPI.createLog({
+          type: LOG_TYPES.DISEASE_DETECTION,
+          log: `Disease Detection Analysis - ERROR\n\nImage Details:\n- Name: ${model2Form.image?.name || 'Unknown'}\n- Size: ${model2Form.image ? (model2Form.image.size / 1024).toFixed(2) + ' KB' : 'Unknown'}\n- Type: ${model2Form.image?.type || 'Unknown'}\n\nError:\n${error.message || error}\n\nTimestamp: ${new Date().toLocaleString()}`
+        }, user.id);
+      }
+>>>>>>> b936d121ee9ebf67bd484e201dab682e1e2aafa9
     } finally {
       setLoading(prev => ({ ...prev, model2: false }));
     }
@@ -281,6 +332,7 @@ const CropAnalysis = () => {
       });
 
       const result = await response.json();
+<<<<<<< HEAD
 
       // Log successful model call
       await logModelSuccess(
@@ -331,6 +383,37 @@ const CropAnalysis = () => {
       );
 
       setResults(prev => ({ ...prev, model3: 'Error! Check console for details.' }));
+=======
+      const prediction = result.prediction || 'No prediction returned';
+      setResults(prev => ({ ...prev, model3: prediction }));
+      
+      // Log the interaction
+      if (user?.id) {
+        const logEntry = {
+          parameters: model3Form,
+          response: { prediction, timestamp: new Date().toISOString() },
+          endpoint: 'http://127.0.0.1:5000/model3',
+          status: 'success'
+        };
+        
+        await logAPI.createLog({
+          type: LOG_TYPES.YIELD_PREDICTION,
+          log: `Yield Prediction Analysis\n\nParameters:\n${JSON.stringify(model3Form, null, 2)}\n\nResponse:\n${JSON.stringify({ prediction }, null, 2)}\n\nTimestamp: ${new Date().toLocaleString()}`
+        }, user.id);
+      }
+    } catch (error) {
+      console.error('Model 3 Error:', error);
+      const errorMsg = 'Error! Check console for details.';
+      setResults(prev => ({ ...prev, model3: errorMsg }));
+      
+      // Log the error
+      if (user?.id) {
+        await logAPI.createLog({
+          type: LOG_TYPES.YIELD_PREDICTION,
+          log: `Yield Prediction Analysis - ERROR\n\nParameters:\n${JSON.stringify(model3Form, null, 2)}\n\nError:\n${error.message || error}\n\nTimestamp: ${new Date().toLocaleString()}`
+        }, user.id);
+      }
+>>>>>>> b936d121ee9ebf67bd484e201dab682e1e2aafa9
     } finally {
       setLoading(prev => ({ ...prev, model3: false }));
     }
