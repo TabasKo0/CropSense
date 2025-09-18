@@ -1,26 +1,14 @@
 import express from 'express';
-import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import dbManager from '../utils/database.js';
 
 // Load environment variables
 dotenv.config();
 
 const router = express.Router();
 
-// Supabase configuration
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-// Validate required environment variables
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    console.error('❌ Missing required environment variables for logging service');
-}
-
-const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY ?
-    createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY) : null;
-
-// In-memory storage for logs (fallback if Supabase is not available)
-let memoryLogs: any[] = [];
+// In-memory storage for logs (fallback if database is not available)
+let memoryLogs = [];
 
 // POST /api/logs - Store model API call logs
 router.post('/logs', async (req, res) => {
@@ -45,30 +33,27 @@ router.post('/logs', async (req, res) => {
             requestId: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         };
 
-        // Store in Supabase if available
-        if (supabase) {
-            try {
-                const { data, error } = await supabase
-                    .from('model_logs')
-                    .insert([enrichedLog])
-                    .select('id')
-                    .single();
+        // Store in SQLite database
+        try {
+            const result = await dbManager.run(
+                `INSERT INTO model_logs (type, timestamp, serverTimestamp, ipAddress, userAgent, requestId, data) 
+                 VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)`,
+                [
+                    enrichedLog.type,
+                    enrichedLog.timestamp,
+                    enrichedLog.ipAddress,
+                    enrichedLog.userAgent,
+                    enrichedLog.requestId,
+                    JSON.stringify(enrichedLog)
+                ]
+            );
 
-                if (error) {
-                    console.error('Supabase log storage error:', error);
-                    // Fallback to memory storage
-                    memoryLogs.push(enrichedLog);
-                } else {
-                    console.log(`✅ Log stored in Supabase: ${logData.type} (ID: ${data.id})`);
-                }
-            } catch (dbError) {
-                console.error('Database connection error:', dbError);
-                memoryLogs.push(enrichedLog);
-            }
-        } else {
+            console.log(`✅ Log stored in SQLite: ${logData.type} (ID: ${result.lastID})`);
+        } catch (dbError) {
+            console.error('Database storage error:', dbError);
             // Fallback to memory storage
             memoryLogs.push(enrichedLog);
-            console.log(`📝 Log stored in memory: ${logData.type}`);
+            console.log(`📝 Log stored in memory (DB failed): ${logData.type}`);
         }
 
         // Keep only last 1000 logs in memory to prevent memory leaks
@@ -98,28 +83,20 @@ router.get('/logs', async (req, res) => {
     try {
         const { type, limit = 50, offset = 0 } = req.query;
 
-        // If Supabase is available, fetch from database
-        if (supabase) {
-            let query = supabase
-                .from('model_logs')
-                .select('*')
-                .order('timestamp', { ascending: false })
-                .range(Number(offset), Number(offset) + Number(limit) - 1);
+        // Fetch from SQLite database
+        try {
+            let query = 'SELECT * FROM model_logs';
+            let params = [];
 
             if (type) {
-                query = query.eq('type', type);
+                query += ' WHERE type = ?';
+                params.push(type);
             }
 
-            const { data, error } = await query;
+            query += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+            params.push(Number(limit), Number(offset));
 
-            if (error) {
-                console.error('Error fetching logs from Supabase:', error);
-                return res.status(500).json({
-                    success: false,
-                    error: 'Failed to fetch logs from database',
-                    timestamp: new Date().toISOString()
-                });
-            }
+            const data = await dbManager.all(query, params);
 
             return res.json({
                 success: true,
@@ -128,26 +105,28 @@ router.get('/logs', async (req, res) => {
                 source: 'database',
                 timestamp: new Date().toISOString()
             });
+        } catch (dbError) {
+            console.error('Error fetching logs from SQLite:', dbError);
+            
+            // Fallback to memory logs
+            let filteredLogs = memoryLogs;
+
+            if (type) {
+                filteredLogs = memoryLogs.filter(log => log.type === type);
+            }
+
+            const paginatedLogs = filteredLogs
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                .slice(Number(offset), Number(offset) + Number(limit));
+
+            return res.json({
+                success: true,
+                data: paginatedLogs,
+                total: filteredLogs.length,
+                source: 'memory',
+                timestamp: new Date().toISOString()
+            });
         }
-
-        // Fallback to memory logs
-        let filteredLogs = memoryLogs;
-
-        if (type) {
-            filteredLogs = memoryLogs.filter(log => log.type === type);
-        }
-
-        const paginatedLogs = filteredLogs
-            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-            .slice(Number(offset), Number(offset) + Number(limit));
-
-        res.json({
-            success: true,
-            data: paginatedLogs,
-            total: filteredLogs.length,
-            source: 'memory',
-            timestamp: new Date().toISOString()
-        });
 
     } catch (error) {
         console.error('Error fetching logs:', error);
@@ -221,30 +200,24 @@ router.get('/logs/stats', async (req, res) => {
 // DELETE /api/logs - Clear all logs (for testing/debugging)
 router.delete('/logs', async (req, res) => {
     try {
-        if (supabase) {
-            const { error } = await supabase
-                .from('model_logs')
-                .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
-
-            if (error) {
-                console.error('Error clearing logs from Supabase:', error);
-                return res.status(500).json({
-                    success: false,
-                    error: 'Failed to clear logs from database',
-                    timestamp: new Date().toISOString()
-                });
-            }
+        let clearedFromDB = 0;
+        
+        try {
+            const result = await dbManager.run('DELETE FROM model_logs');
+            clearedFromDB = result.changes || 0;
+        } catch (dbError) {
+            console.error('Error clearing logs from SQLite:', dbError);
         }
 
         // Clear memory logs
-        const clearedCount = memoryLogs.length;
+        const clearedFromMemory = memoryLogs.length;
         memoryLogs = [];
 
         res.json({
             success: true,
             message: 'Logs cleared successfully',
-            clearedCount,
+            clearedFromDatabase: clearedFromDB,
+            clearedFromMemory: clearedFromMemory,
             timestamp: new Date().toISOString()
         });
 

@@ -1,36 +1,24 @@
-import { createClient } from '@supabase/supabase-js';
+import express from 'express';
+import dbManager from '../utils/database.js';
 
-// Supabase configuration using environment variables
-const SUPABASE_URL =
-    import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const router = express.Router();
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Items API - Direct Supabase calls
-export const itemsAPI = {
+// Items API - Direct SQLite calls
+const itemsAPI = {
     // GET all items or filter by uuid
     async getItems(uuid = null) {
         try {
-            let query = supabase
-                .from('items')
-                .select('*')
-                .order('created_at', { ascending: false }); // If uuid is provided, filter by that user
+            let query;
+            let params = [];
+            
             if (uuid) {
-                query = query.eq('uuid', uuid);
+                query = 'SELECT * FROM items WHERE uuid = ? ORDER BY created_at DESC';
+                params = [uuid];
+            } else {
+                query = 'SELECT * FROM items ORDER BY created_at DESC';
             }
 
-            const { data, error } = await query;
-
-            if (error) {
-                console.error('Items fetch error:', error);
-                throw new Error(error.message);
-            }
+            const data = await dbManager.all(query, params);
 
             return {
                 success: true,
@@ -53,19 +41,16 @@ export const itemsAPI = {
     // GET specific item by ID
     async getItemById(item_id) {
         try {
-            const { data, error } = await supabase
-                .from('items')
-                .select('*')
-                .eq('item_id', item_id)
-                .single();
-            if (error) {
-                if (error.code === 'PGRST116') {
-                    return {
-                        success: false,
-                        error: 'Item not found'
-                    };
-                }
-                throw new Error(error.message);
+            const data = await dbManager.get(
+                'SELECT * FROM items WHERE item_id = ?',
+                [item_id]
+            );
+            
+            if (!data) {
+                return {
+                    success: false,
+                    error: 'Item not found'
+                };
             }
 
             return {
@@ -108,27 +93,30 @@ export const itemsAPI = {
                 };
             }
 
-            const { data, error } = await supabase
-                .from('items')
-                .insert([{
-                    uuid: userId,
-                    image_link: image_link || null,
-                    image_bucket: image_bucket || null,
-                    title: title.trim(),
-                    desp: desp.trim(),
-                    price: parseFloat(price),
-                    contact: contact.trim(),
-                    type: type.trim(),
-                    qty: qty ? parseInt(qty) : null,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }])
-                .select()
-                .single();
+            const result = await dbManager.run(
+                `INSERT INTO items (uuid, image_link, image_bucket, title, description, price, contact, type, qty, created_at, updated_at) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+                [
+                    userId,
+                    image_link || null,
+                    image_bucket || null,
+                    title.trim(),
+                    desp.trim(),
+                    parseFloat(price),
+                    contact.trim(),
+                    type.trim(),
+                    qty ? parseInt(qty) : null
+                ]
+            );
 
-            if (error) {
-                console.error('Item creation error:', error);
-                throw new Error(error.message);
+            // Get the created item
+            const data = await dbManager.get(
+                'SELECT * FROM items WHERE rowid = ?',
+                [result.lastID]
+            );
+
+            if (!data) {
+                throw new Error('Failed to retrieve created item');
             }
 
             return {
@@ -150,12 +138,12 @@ export const itemsAPI = {
     async updateItem(id, itemData, userId) {
         try {
             // First check if item exists and user owns it
-            const { data: existingItem, error: checkError } = await supabase
-                .from('items')
-                .select('uuid')
-                .eq('id', id)
-                .single();
-            if (checkError || !existingItem) {
+            const existingItem = await dbManager.get(
+                'SELECT uuid FROM items WHERE id = ?',
+                [id]
+            );
+            
+            if (!existingItem) {
                 return {
                     success: false,
                     error: 'Item not found'
@@ -171,29 +159,66 @@ export const itemsAPI = {
 
             const { image_link, image_bucket, title, desp, price, contact, type, qty } = itemData;
 
-            // Prepare update data
-            const updateData = {
-                updated_at: new Date().toISOString()
-            };
+            // Prepare update data and parameters
+            const updateFields = [];
+            const updateParams = [];
 
-            if (title !== undefined) updateData.title = title.trim();
-            if (desp !== undefined) updateData.desp = desp.trim();
-            if (price !== undefined) updateData.price = parseFloat(price);
-            if (contact !== undefined) updateData.contact = contact.trim();
-            if (type !== undefined) updateData.type = type.trim();
-            if (qty !== undefined) updateData.qty = qty ? parseInt(qty) : null;
-            if (image_link !== undefined) updateData.image_link = image_link;
-            if (image_bucket !== undefined) updateData.image_bucket = image_bucket;
+            if (title !== undefined) {
+                updateFields.push('title = ?');
+                updateParams.push(title.trim());
+            }
+            if (desp !== undefined) {
+                updateFields.push('description = ?');
+                updateParams.push(desp.trim());
+            }
+            if (price !== undefined) {
+                updateFields.push('price = ?');
+                updateParams.push(parseFloat(price));
+            }
+            if (contact !== undefined) {
+                updateFields.push('contact = ?');
+                updateParams.push(contact.trim());
+            }
+            if (type !== undefined) {
+                updateFields.push('type = ?');
+                updateParams.push(type.trim());
+            }
+            if (qty !== undefined) {
+                updateFields.push('qty = ?');
+                updateParams.push(qty ? parseInt(qty) : null);
+            }
+            if (image_link !== undefined) {
+                updateFields.push('image_link = ?');
+                updateParams.push(image_link);
+            }
+            if (image_bucket !== undefined) {
+                updateFields.push('image_bucket = ?');
+                updateParams.push(image_bucket);
+            }
 
-            const { data, error } = await supabase
-                .from('items')
-                .update(updateData)
-                .eq('id', id)
-                .select()
-                .single();
-            if (error) {
-                console.error('Item update error:', error);
-                throw new Error(error.message);
+            if (updateFields.length === 0) {
+                return {
+                    success: false,
+                    error: 'No fields to update'
+                };
+            }
+
+            updateFields.push('updated_at = CURRENT_TIMESTAMP');
+            updateParams.push(id);
+
+            await dbManager.run(
+                `UPDATE items SET ${updateFields.join(', ')} WHERE id = ?`,
+                updateParams
+            );
+
+            // Get the updated item
+            const data = await dbManager.get(
+                'SELECT * FROM items WHERE id = ?',
+                [id]
+            );
+
+            if (!data) {
+                throw new Error('Failed to retrieve updated item');
             }
 
             return {
@@ -215,12 +240,12 @@ export const itemsAPI = {
     async deleteItem(id, userId) {
         try {
             // First check if item exists and user owns it
-            const { data: existingItem, error: checkError } = await supabase
-                .from('items')
-                .select('uuid, title')
-                .eq('id', id)
-                .single();
-            if (checkError || !existingItem) {
+            const existingItem = await dbManager.get(
+                'SELECT uuid, title FROM items WHERE id = ?',
+                [id]
+            );
+            
+            if (!existingItem) {
                 return {
                     success: false,
                     error: 'Item not found'
@@ -234,14 +259,10 @@ export const itemsAPI = {
                 };
             }
 
-            const { error } = await supabase
-                .from('items')
-                .delete()
-                .eq('id', id);
-            if (error) {
-                console.error('Item deletion error:', error);
-                throw new Error(error.message);
-            }
+            await dbManager.run(
+                'DELETE FROM items WHERE id = ?',
+                [id]
+            );
 
             return {
                 success: true,
@@ -258,4 +279,128 @@ export const itemsAPI = {
     }
 };
 
-export default itemsAPI;
+// Express routes that use the itemsAPI
+// GET /api/items - Get all items or filter by user
+router.get('/', async (req, res) => {
+    try {
+        const { uuid } = req.query;
+        const result = await itemsAPI.getItems(uuid);
+        
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(400).json(result);
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// GET /api/items/:id - Get specific item by ID
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await itemsAPI.getItemById(id);
+        
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(404).json(result);
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// POST /api/items - Add new item (requires authentication)
+router.post('/', async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id']; // Simple auth for now
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                error: 'Authentication required'
+            });
+        }
+
+        const result = await itemsAPI.addItem(req.body, userId);
+        
+        if (result.success) {
+            res.status(201).json(result);
+        } else {
+            res.status(400).json(result);
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// PUT /api/items/:id - Update item (only by owner)
+router.put('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.headers['x-user-id']; // Simple auth for now
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                error: 'Authentication required'
+            });
+        }
+
+        const result = await itemsAPI.updateItem(id, req.body, userId);
+        
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(result.error.includes('not found') ? 404 : 403).json(result);
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+// DELETE /api/items/:id - Delete item (only by owner)
+router.delete('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.headers['x-user-id']; // Simple auth for now
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                error: 'Authentication required'
+            });
+        }
+
+        const result = await itemsAPI.deleteItem(id, userId);
+        
+        if (result.success) {
+            res.json(result);
+        } else {
+            res.status(result.error.includes('not found') ? 404 : 403).json(result);
+        }
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error',
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
+export default router;
