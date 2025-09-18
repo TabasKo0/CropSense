@@ -1,13 +1,13 @@
 # 🌱 CropSense - AI-Powered Agricultural Intelligence Platform
 
-![CropSense Homepage](https://github.com/user-attachments/assets/598675b8-f32c-434d-be9c-e068a5d2d2ec)
+![CropSense Homepage](docs/images/homepage.png)
 
 CropSense is a comprehensive agricultural intelligence platform that leverages artificial intelligence to help farmers optimize crop yields, predict diseases, and make data-driven farming decisions. The platform combines advanced machine learning models with intuitive user interfaces to provide actionable insights for modern agriculture.
 
 ## 🚀 Features
 
 ### 🔬 AI-Powered Crop Analysis
-![Crop Analysis Interface](https://github.com/user-attachments/assets/0c8335a0-bd51-4d17-bcf1-5a8cd1cc3460)
+![Crop Analysis Interface](docs/images/crop-analysis.png)
 
 - **Disease Detection**: Upload crop images to detect diseases using deep learning models
 - **Yield Prediction**: Predict crop yields based on environmental factors and farming inputs
@@ -15,7 +15,7 @@ CropSense is a comprehensive agricultural intelligence platform that leverages a
 - **Real-time Analysis**: Get instant AI-powered insights for your crops
 
 ### 🛒 Agricultural Marketplace
-![Marketplace Interface](https://github.com/user-attachments/assets/59cb703f-a3b1-42e7-ab8b-30f4cc59c3a8)
+![Marketplace Interface](docs/images/marketplace.png)
 
 - **Product Trading**: Connect buyers and sellers in the agricultural supply chain
 - **Quote Requests**: Request quotes for seeds, fertilizers, and farming equipment
@@ -23,7 +23,7 @@ CropSense is a comprehensive agricultural intelligence platform that leverages a
 - **Product Categories**: Organized marketplace with multiple agricultural categories
 
 ### 🗺️ Smart Soil Mapping
-![Soil Map Interface](https://github.com/user-attachments/assets/13ce8f23-e045-4f9b-80e1-bf02371c5f60)
+![Soil Map Interface](docs/images/soil-map.png)
 
 - **Interactive Maps**: Visualize soil conditions and agricultural zones
 - **Data Overlays**: Layer weather, satellite, and soil data for comprehensive analysis
