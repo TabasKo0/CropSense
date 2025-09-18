@@ -6,7 +6,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Edit, Save, X, Plus, Trash2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 interface DatabaseTableProps {
   tableName: string;
@@ -30,41 +29,48 @@ const DatabaseTable = ({ tableName }: DatabaseTableProps) => {
       setLoading(true);
       setError("");
       
-      // Fetch data from Supabase
-      // First, check if created_at column exists
-      const { data: sampleData, error: sampleError } = await supabase
-        .from(tableName)
-        .select('*')
-        .limit(1);
-
-      if (sampleError) {
-        console.error('Supabase sample fetch error:', sampleError);
-        setError(`Failed to load table: ${sampleError.message}`);
-        return;
-      }
-
-      let hasCreatedAt = false;
-      if (sampleData && sampleData.length > 0) {
-        hasCreatedAt = 'created_at' in sampleData[0];
-      }
-
-      // Now fetch the data
-      let query = supabase.from(tableName).select('*');
-      if (hasCreatedAt) {
-        query = query.order('created_at', { ascending: false });
-      }
-      const { data: tableData, error: fetchError } = await query.limit(100);
+      // For SQLite backend, we'll make API calls instead of direct database access
+      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      let endpoint = '';
       
-      if (fetchError) {
-        console.error('Supabase fetch error:', fetchError);
-        setError(`Failed to load table: ${fetchError.message}`);
+      // Map table names to API endpoints
+      switch (tableName) {
+        case 'items':
+          endpoint = `${API_BASE_URL}/items`;
+          break;
+        case 'orders':
+          endpoint = `${API_BASE_URL}/orders/user/1`; // This would need proper user context
+          break;
+        case 'users':
+          // Users table access should be restricted for security
+          setError("Direct user table access is not available for security reasons. Use the authentication API instead.");
+          setLoading(false);
+          return;
+        case 'predictions':
+          endpoint = `${API_BASE_URL}/logs/user/1`; // This would need proper user context
+          break;
+        default:
+          setError(`Table ${tableName} is not supported in the current API`);
+          setLoading(false);
+          return;
+      }
+
+      const response = await fetch(endpoint);
+      const result = await response.json();
+      
+      if (!response.ok) {
+        setError(`Failed to load table: ${result.error || 'Unknown error'}`);
         return;
       }
+      
+      const tableData = result.items || result.orders || result.logs || result.data || [];
       
       if (tableData && tableData.length > 0) {
         setData(tableData);
-        // Filter out 'password' column from display
-        setColumns(Object.keys(tableData[0]).filter(col => col !== 'password'));
+        // Filter out sensitive columns like passwords
+        setColumns(Object.keys(tableData[0]).filter(col => 
+          !['password', 'password_hash'].includes(col)
+        ));
       } else {
         setData([]);
         setColumns([]);
