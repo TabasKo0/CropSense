@@ -5,12 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ShieldCheck, Mail, Lock } from "lucide-react";
+import { Loader2, ShieldCheck, User, Lock } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 
 const AdminLogin = () => {
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: ""
   });
   const [loading, setLoading] = useState(false);
@@ -37,20 +37,20 @@ const AdminLogin = () => {
     e.preventDefault();
     setError("");
 
-    if (!formData.email || !formData.password) {
-      setError("Email and password are required");
+    if (!formData.username || !formData.password) {
+      setError("Username and password are required");
       return;
     }
 
     setLoading(true);
 
     try {
-      const success = await loginAdmin(formData.email, formData.password);
+      const success = await loginAdmin(formData.username, formData.password);
       
       if (success) {
         navigate('/admin/dashboard');
       } else {
-        setError('Invalid admin credentials or insufficient permissions');
+        setError('Invalid admin credentials. Use "admin" for both username and password.');
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
@@ -100,15 +100,15 @@ const AdminLogin = () => {
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="username">Username</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="Enter admin email"
-                    value={formData.email}
+                    id="username"
+                    name="username"
+                    type="text"
+                    placeholder="Enter admin username"
+                    value={formData.username}
                     onChange={handleChange}
                     className="pl-10"
                     required
@@ -151,7 +151,7 @@ const AdminLogin = () => {
 
             <div className="mt-6 text-center">
               <p className="text-xs text-muted-foreground">
-                Only users with admin role can access this portal
+                Use "admin" for both username and password
               </p>
             </div>
           </CardContent>
