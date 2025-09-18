@@ -148,27 +148,24 @@ router.get('/logs/stats', async (req, res) => {
             source: 'memory'
         };
 
-        if (supabase) {
-            // Get stats from Supabase
-            const { data, error } = await supabase
-                .from('model_logs')
-                .select('type, timestamp')
-                .order('timestamp', { ascending: false })
-                .limit(100);
+        // Get stats from SQLite database
+        try {
+            const data = await dbManager.all(
+                'SELECT type, timestamp FROM model_logs ORDER BY timestamp DESC LIMIT 100'
+            );
 
-            if (!error && data) {
-                stats.totalLogs = data.length;
-                stats.source = 'database';
+            stats.totalLogs = data.length;
+            stats.source = 'database';
 
-                // Count by type
-                data.forEach(log => {
-                    stats.logsByType[log.type] = (stats.logsByType[log.type] || 0) + 1;
-                });
+            // Count by type
+            data.forEach(log => {
+                stats.logsByType[log.type] = (stats.logsByType[log.type] || 0) + 1;
+            });
 
-                // Recent activity (last 10)
-                stats.recentActivity = data.slice(0, 10);
-            }
-        } else {
+            // Recent activity (last 10)
+            stats.recentActivity = data.slice(0, 10);
+        } catch (dbError) {
+            console.error('Database error, falling back to memory:', dbError);
             // Get stats from memory
             stats.totalLogs = memoryLogs.length;
 
