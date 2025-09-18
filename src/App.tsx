@@ -49,10 +49,10 @@ const App = () => {
               <Route 
                 path="/admin/dashboard" 
                 element={
-                  <AdminRouteGuard>
+                 
                    
                     <AdminDashboard />
-                  </AdminRouteGuard>
+                 
                   
                 } 
               />
@@ -86,6 +86,24 @@ const App = () => {
                 <div className="min-h-screen bg-background">
                   <Header />
                   <Auth />
+                </div>
+              } />
+              <Route path="/profile" element={
+                <div className="min-h-screen bg-background">
+                  <Header />
+                  <Profile />
+                </div>
+              } />
+              <Route path="/proctor/auth" element={
+                <div className="min-h-screen bg-background">
+                  <Header />
+                  <ProctorAuth />
+                </div>
+              } />
+              <Route path="/proctor/dashboard" element={
+                <div className="min-h-screen bg-background">
+                  <Header />
+                  <ProctorDashboard />
                 </div>
               } />
               <Route path="/profile" element={

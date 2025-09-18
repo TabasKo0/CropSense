@@ -9,7 +9,7 @@ import { useEffect } from "react";
 import { Card } from "./ui/card";
 const Header = () => {
   const { isAuthenticated, user, logout } = useAuth();
-  const [isChange, setIsChange] = useState(true);
+  const [isChange, setIsChange] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -148,6 +148,9 @@ const handleLanguage = () => {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden">
+           <Button variant="outline" size="sm" onClick={handleLanguage}>
+                  Language
+                </Button>
             <Button
               variant="ghost"
               size="sm"

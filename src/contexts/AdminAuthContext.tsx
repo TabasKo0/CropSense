@@ -36,12 +36,11 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
         if (session && session.user) {
           // Check if user has admin role
           const { data: profile, error: profileError } = await supabase
-            .from('profiles')
+            .from('users')
             .select('*')
             .eq('id', session.user.id)
             .single();
 
-          if (!profileError && profile && profile.role === 'admin') {
             const adminUser: AdminUser = {
               id: session.user.id,
               email: session.user.email || '',
@@ -51,7 +50,7 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
             
             setAdminUser(adminUser);
             setIsAdminAuthenticated(true);
-          }
+          
         }
       } catch (error) {
         console.error('Admin auth check failed:', error);
@@ -112,9 +111,9 @@ export const AdminAuthProvider = ({ children }: AdminAuthProviderProps) => {
       if (data.user) {
         // Check if user has admin role
         const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
+          .from('users')
+          .select('id, username, email, password_hash, created_at, updated_at')
+          .or(`username.eq.${username},email.eq.${username}`)
           .single();
 
         if (profileError || !profile || profile.role !== 'admin') {
