@@ -51,12 +51,12 @@ export const itemsAPI = {
     },
 
     // GET specific item by ID
-    async getItemById(id) {
+    async getItemById(item_id) {
         try {
             const { data, error } = await supabase
                 .from('items')
                 .select('*')
-                .eq('id', id)
+                .eq('item_id', item_id)
                 .single();
             if (error) {
                 if (error.code === 'PGRST116') {

@@ -33,11 +33,70 @@ export const ordersAPI = {
                     error: 'Quantity must be greater than 0'
                 };
             }
+            //console.log(item_id);
 
+            // First, get the current item data to check stock availability
+            const { data: itemData, error: fetchError } = await supabase
+                .from('items')
+                .select('sold, qty')
+                .eq('item_id', item_id)
+                .single();
+
+            if (fetchError) {
+                console.error('Failed to fetch item data:', fetchError);
+                return {
+                    success: false,
+                    error: 'Failed to verify item availability'
+                };
+            }
+
+            if (!itemData) {
+                return {
+                    success: false,
+                    error: 'Item not found'
+                };
+            }
+
+            const currentSold = itemData.sold || 0;
+            const totalQuantity = itemData.qty;
+            const newSoldCount = currentSold + parseInt(qty);
+
+            // Check if there's enough stock
+            if (totalQuantity && newSoldCount > totalQuantity) {
+                return {
+                    success: false,
+                    error: 'Insufficient stock available'
+                };
+            }
+
+            // Update the sold count and sold_out status
+            const updateData = {
+                sold: newSoldCount
+            };
+
+            // If new sold count equals total quantity, mark as sold out
+            if (totalQuantity && newSoldCount >= totalQuantity) {
+                updateData.sold_out = true;
+            }
+
+            const { error: updateError } = await supabase
+                .from('items')
+                .update(updateData)
+                .eq('item_id', item_id);
+
+            if (updateError) {
+                console.error('Failed to update sold count:', updateError);
+                return {
+                    success: false,
+                    error: 'Failed to update stock. Please try again.'
+                };
+            }
+
+            // Only if stock update succeeds, create the order
             const { data, error } = await supabase
                 .from('orders')
                 .insert([{
-                    item_id,
+                    item_id: item_id,
                     qty: parseInt(qty),
                     uuid: userId,
                     progress: 'pending',
@@ -49,6 +108,20 @@ export const ordersAPI = {
 
             if (error) {
                 console.error('Order creation error:', error);
+
+                // Rollback the sold count update since order creation failed
+                const rollbackData = {
+                    sold: currentSold
+                };
+                if (totalQuantity && currentSold < totalQuantity) {
+                    rollbackData.sold_out = false;
+                }
+
+                await supabase
+                    .from('items')
+                    .update(rollbackData)
+                    .eq('item_id', item_id);
+
                 throw new Error(error.message);
             }
 
@@ -67,32 +140,68 @@ export const ordersAPI = {
         }
     },
 
-    // GET - Fetch user orders
+    // GET - Fetch user orders with item details
     async getUserOrders(userId) {
         try {
-            const { data, error } = await supabase
+            // First, get orders with basic data (item_id, quantity, status)
+            const { data: ordersData, error: ordersError } = await supabase
                 .from('orders')
-                .select(`
-                    *,
-                    items (
-                        id,
-                        title,
-                        price,
-                        type
-                    )
-                `)
+                .select('order_id, item_id, qty, progress, created_at, updated_at')
                 .eq('uuid', userId)
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('Orders fetch error:', error);
-                throw new Error(error.message);
+            if (ordersError) {
+                console.error('Orders fetch error:', ordersError);
+                throw new Error(ordersError.message);
             }
+
+            if (!ordersData || ordersData.length === 0) {
+                return {
+                    success: true,
+                    orders: [],
+                    count: 0
+                };
+            }
+
+            // Extract unique item_ids to fetch item details
+            const itemIds = [...new Set(ordersData.map(order => order.item_id))];
+            console.log(itemIds);
+            // Fetch item details for all item_ids
+            const { data: itemsData, error: itemsError } = await supabase
+                .from('items')
+                .select('item_id, title, price, type, desp, type, image_link')
+                .in('item_id', itemIds);
+            console.log("Fetched item details:", itemsData);
+            if (itemsError) {
+                console.error('Items fetch error:', itemsError);
+                // Continue without item details if items fetch fails
+            }
+
+            // Map item details to orders
+            const ordersWithItems = ordersData.map(order => {
+                const itemDetails = itemsData && Array.isArray(itemsData) ?
+                    itemsData.find(item => item.item_id === order.item_id) :
+                    null;
+
+                return {
+                    ...order,
+                    items: itemDetails ? {
+                        id: itemDetails.item_id,
+                        title: itemDetails.title,
+                        price: itemDetails.price,
+                        type: itemDetails.type,
+                        desp: itemDetails.desp,
+                        image_url: itemDetails.image_link,
+                        farmer_name: itemDetails.farmer_name
+                    } : null
+                };
+            });
+
 
             return {
                 success: true,
-                orders: data || [],
-                count: data ? data.length : 0
+                orders: ordersWithItems,
+                count: ordersWithItems.length
             };
 
         } catch (error) {
