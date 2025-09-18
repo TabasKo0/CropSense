@@ -215,7 +215,7 @@ const Cybersecurity = () => {
                     CALL NOW
                   </h3>
                   <p className="text-lg font-mono text-destructive mb-4">
-                    1-800-CYBER-911
+                    112
                   </p>
                   <p className="text-sm text-muted-foreground mb-4">
                     24/7 Emergency Hotline for active cyber threats
@@ -225,7 +225,7 @@ const Cybersecurity = () => {
                   variant="destructive" 
                   size="lg"
                   className="w-full text-lg py-6 font-bold"
-                  onClick={() => window.open('tel:1-800-CYBER-911')}
+                  onClick={() => window.open('tel:911')}
                 >
                   <Phone className="mr-2 h-6 w-6" />
                   EMERGENCY CALL
@@ -234,28 +234,7 @@ const Cybersecurity = () => {
             </Card>
 
             {/* Response Times */}
-            <Card className="shadow-strong">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  Response Times
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center p-3 bg-destructive/10 rounded-lg">
-                  <span className="font-medium text-destructive">High Priority</span>
-                  <Badge variant="destructive">15 minutes</Badge>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg">
-                  <span className="font-medium text-orange-700">Medium Priority</span>
-                  <Badge className="bg-orange-500">2 hours</Badge>
-                </div>
-                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                  <span className="font-medium text-green-700">Low Priority</span>
-                  <Badge className="bg-green-500">24 hours</Badge>
-                </div>
-              </CardContent>
-            </Card>
+           
 
             {/* Contact Info */}
             <Card className="shadow-strong">

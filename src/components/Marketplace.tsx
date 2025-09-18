@@ -13,9 +13,10 @@ import { itemsAPI } from "@/api/routes/items";
 import { ordersAPI } from "@/api/routes/orders";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import OrderConfirmation from "@/components/OrderConfirmation";
 
 interface Item {
-  id: string;
+  item_id: string;
   uuid: string;
   image_link?: string;
   image_bucket?: string;
@@ -39,6 +40,12 @@ const Marketplace = () => {
   const [addingItem, setAddingItem] = useState(false);
   const [orderingItems, setOrderingItems] = useState<Set<string>>(new Set());
   const [itemQuantities, setItemQuantities] = useState<{[key: string]: number}>({});
+  const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
+  const [orderConfirmationDetails, setOrderConfirmationDetails] = useState({
+    quantity: 0,
+    itemTitle: "",
+    message: ""
+  });
   
   // Form data for adding new item
   const [formData, setFormData] = useState({
@@ -58,9 +65,7 @@ const Marketplace = () => {
       const result = await itemsAPI.getItems();
       
       if (result.success) {
-        console.log('Fetched items:', result.items);
-        console.log('First item structure:', result.items?.[0]);
-        console.log('First item keys:', result.items?.[0] ? Object.keys(result.items[0]) : 'No items');
+
         setItems(result.items || []);
       } else {
         setError(result.error || 'Failed to load items');
@@ -172,8 +177,7 @@ const Marketplace = () => {
 
     // Add item to ordering state
     setOrderingItems(prev => new Set(prev).add(itemId));
-    console.log('Placing order for item:', itemId, 'Quantity:', getItemQuantity(itemId));
-    console.log('Item object:', items.find(item => (item.uuid || item.id) === itemId));
+
     try {
       const selectedQuantity = getItemQuantity(itemId);
       const result = await ordersAPI.placeOrder({
@@ -183,11 +187,13 @@ const Marketplace = () => {
       }, user.id);
 
       if (result.success) {
-        toast({
-          title: "Order Placed Successfully!",
-          description: `Ordered ${selectedQuantity} item(s). ${result.message || "Your order has been placed."}`,
-          variant: "default",
+        const currentItem = items.find(item => item.item_id === itemId);
+        setOrderConfirmationDetails({
+          quantity: selectedQuantity,
+          itemTitle: currentItem?.title || '',
+          message: result.message || "Your order has been placed successfully!"
         });
+        setShowOrderConfirmation(true);
       } else {
         toast({
           title: "Order Failed",
@@ -402,7 +408,7 @@ const Marketplace = () => {
         {items.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
             {items.map((item) => (
-              <Card key={item.uuid || item.id} className="shadow-strong hover:shadow-xl transition-shadow">
+              <Card key={item.item_id} className="shadow-strong hover:shadow-xl transition-shadow">
                 <CardHeader className="pb-3">
                   {item.image_link && (
                     <div className="w-full h-48 mb-3 rounded-lg overflow-hidden bg-gray-100">
@@ -455,8 +461,8 @@ const Marketplace = () => {
                         variant="outline"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        onClick={() => updateQuantity(item.uuid || item.id, getItemQuantity(item.uuid || item.id) - 1, item.qty)}
-                        disabled={getItemQuantity(item.uuid || item.id) <= 1}
+                        onClick={() => updateQuantity(item.item_id, getItemQuantity(item.item_id) - 1, item.qty)}
+                        disabled={getItemQuantity(item.item_id) <= 1}
                       >
                         -
                       </Button>
@@ -464,13 +470,13 @@ const Marketplace = () => {
                         type="number"
                         min="1"
                         max={item.qty || undefined}
-                        value={getItemQuantity(item.uuid || item.id)}
-                        onChange={(e) => handleQuantityInputChange(item.uuid || item.id, e.target.value, item.qty)}
+                        value={getItemQuantity(item.item_id)}
+                        onChange={(e) => handleQuantityInputChange(item.item_id, e.target.value, item.qty)}
                         className="w-16 text-center font-medium h-8 px-1"
                         onBlur={(e) => {
                           // Ensure minimum value of 1 on blur
                           if (!e.target.value || parseInt(e.target.value) < 1) {
-                            updateQuantity(item.uuid || item.id, 1, item.qty);
+                            updateQuantity(item.item_id, 1, item.qty);
                           }
                         }}
                       />
@@ -478,8 +484,8 @@ const Marketplace = () => {
                         variant="outline"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        onClick={() => updateQuantity(item.uuid || item.id, getItemQuantity(item.uuid || item.id) + 1, item.qty)}
-                        disabled={item.qty && getItemQuantity(item.uuid || item.id) >= item.qty}
+                        onClick={() => updateQuantity(item.item_id, getItemQuantity(item.item_id) + 1, item.qty)}
+                        disabled={item.qty && getItemQuantity(item.item_id) >= item.qty}
                       >
                         +
                       </Button>
@@ -495,13 +501,13 @@ const Marketplace = () => {
                       variant="default" 
                       size="sm" 
                       className="flex-1"
-                      onClick={() => handleOrder(item.uuid || item.id)}
-                      disabled={orderingItems.has(item.uuid || item.id)}
+                      onClick={() => handleOrder(item.item_id)}
+                      disabled={orderingItems.has(item.item_id)}
                     >
                       <ShoppingCart className="h-4 w-4 mr-1" />
-                      {orderingItems.has(item.uuid || item.id) 
+                      {orderingItems.has(item.item_id) 
                         ? "Ordering..." 
-                        : `Order (${getItemQuantity(item.uuid || item.id)})`
+                        : `Order (${getItemQuantity(item.item_id)})`
                       }
                     </Button>
                   </div>
@@ -558,6 +564,14 @@ const Marketplace = () => {
           </Card>
         </div>
       </div>
+      
+      {/* Order Confirmation Modal */}
+      <OrderConfirmation 
+        isVisible={showOrderConfirmation}
+        onClose={() => setShowOrderConfirmation(false)}
+        orderDetails={orderConfirmationDetails}
+      />
+      
       <Toaster />
     </section>
   );

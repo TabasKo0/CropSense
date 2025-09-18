@@ -22,7 +22,7 @@ const Auth = () => {
   }, [searchParams]);
 
   const handleAuthSuccess = (userData: any) => {
-    console.log('Auth successful:', userData);
+    //console.log('Auth successful:', userData);
     // Use AuthContext login method
     login(userData);
     // Redirect to home page
