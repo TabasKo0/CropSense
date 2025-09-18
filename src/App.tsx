@@ -20,6 +20,7 @@ import ProctorDashboard from "./pages/ProctorDashboard";
 import Header from "./components/Header";
 import SoilMap from "./pages/SoilMap";
 import AdminRouteGuard from "./components/admin/AdminRouteGuard";
+import ProctorRouteGuard from "./components/ProctorRouteGuard";
 import { useEffect } from "react";
 import { initLingo, translatePage } from 'lingator';
 
@@ -39,10 +40,11 @@ const App = () => {
       <TooltipProvider>
       <AuthProvider>
         <AdminAuthProvider>
-          <Toaster />
-          <Sonner />
-         
-          <BrowserRouter>
+          <ProctorAuthProvider>
+            <Toaster />
+            <Sonner />
+           
+            <BrowserRouter>
             <Routes>
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
@@ -54,6 +56,17 @@ const App = () => {
                     <AdminDashboard />
                   </AdminRouteGuard>
                   
+                } 
+              />
+              
+              {/* Proctor Routes */}
+              <Route path="/proctor/auth" element={<ProctorAuth />} />
+              <Route 
+                path="/proctor/dashboard" 
+                element={
+                  <ProctorRouteGuard>
+                    <ProctorDashboard />
+                  </ProctorRouteGuard>
                 } 
               />
               
@@ -109,6 +122,7 @@ const App = () => {
               } />
             </Routes>
           </BrowserRouter>
+          </ProctorAuthProvider>
         </AdminAuthProvider>
       </AuthProvider>
     </TooltipProvider>
