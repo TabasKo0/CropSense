@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Package, Clock, CheckCircle, XCircle, Truck } from "lucide-react";
+import { ordersAPI } from "@/api/routes/orders";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface Order {
@@ -35,12 +36,8 @@ const UserOrders = () => {
       
       try {
         setLoading(true);
-        
-        // Use direct API call for orders
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${API_BASE_URL}/orders/user/${user.id}`);
-        const result = await response.json();
-        
+        const result = await ordersAPI.getUserOrders(user.id);
+        //console.log('Fetched orders:', result);
         if (result.success) {
           setOrders(result.orders || []);
         } else {

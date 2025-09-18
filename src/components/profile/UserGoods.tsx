@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Package, Trash2, TrendingUp, Eye, EyeOff } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { itemsAPI } from "@/api/routes/items";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,14 +39,12 @@ const UserGoods = () => {
       
       try {
         setLoading(true);
+        const result = await itemsAPI.getItems(user.id);
         
-        // Use the SQLite client through supabase interface
-        const { data, error } = await supabase.from('items').select('*').eq('uuid', user.id);
-        
-        if (error) {
-          setError(error.message || 'Failed to load items');
+        if (result.success) {
+          setItems(result.items || []);
         } else {
-          setItems(data || []);
+          setError(result.error || 'Failed to load items');
         }
       } catch (err) {
         console.error('Error fetching user items:', err);
@@ -62,20 +60,7 @@ const UserGoods = () => {
   const handleDeleteItem = async (itemId: string) => {
     try {
       setDeletingItem(itemId);
-      
-      // Use direct API call for delete
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${API_BASE_URL}/items/${itemId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user?.id
-        }),
-      });
-
-      const result = await response.json();
+      const result = await itemsAPI.deleteItem(itemId);
       
       if (result.success) {
         setItems(items.filter(item => item.item_id !== itemId));

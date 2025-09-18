@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ShoppingCart, Star, MapPin, Truck, Shield, Users, Plus, Package, DollarSign, Mail, Tag } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { itemsAPI } from "@/api/routes/items";
+import { ordersAPI } from "@/api/routes/orders";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import OrderConfirmation from "@/components/OrderConfirmation";
@@ -57,18 +58,17 @@ const Marketplace = () => {
     image_link: ""
   });
 
-  // Fetch all items from API using SQLite backend
+  // Fetch all items from API using direct Supabase calls
   const fetchItems = async () => {
     try {
       setLoading(true);
+      const result = await itemsAPI.getItems();
       
-      // Use the SQLite client through supabase interface
-      const { data, error } = await supabase.from('items').select('*');
-      
-      if (error) {
-        setError(error.message || 'Failed to load items');
+      if (result.success) {
+
+        setItems(result.items || []);
       } else {
-        setItems(data || []);
+        setError(result.error || 'Failed to load items');
       }
     } catch (err) {
       console.error('Error fetching items:', err);
@@ -88,26 +88,15 @@ const Marketplace = () => {
 
     setAddingItem(true);
     try {
-      // Use direct API call since Supabase interface doesn't support complex operations easily
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${API_BASE_URL}/items`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: formData.title,
-          desp: formData.desp,
-          price: parseFloat(formData.price),
-          contact: formData.contact,
-          type: formData.type,
-          qty: formData.qty ? parseInt(formData.qty) : null,
-          image_link: formData.image_link || null,
-          userId: user.id
-        }),
-      });
-
-      const result = await response.json();
+      const result = await itemsAPI.addItem({
+        title: formData.title,
+        desp: formData.desp,
+        price: parseFloat(formData.price),
+        contact: formData.contact,
+        type: formData.type,
+        qty: formData.qty ? parseInt(formData.qty) : null,
+        image_link: formData.image_link || null
+      }, user.id);
       
       if (result.success) {
         // Reset form and close dialog
@@ -191,22 +180,11 @@ const Marketplace = () => {
 
     try {
       const selectedQuantity = getItemQuantity(itemId);
-      
-      // Use direct API call for order placement
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${API_BASE_URL}/orders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          item_id: itemId,
-          qty: selectedQuantity,
-          userId: user.id
-        }),
-      });
-
-      const result = await response.json();
+      const result = await ordersAPI.placeOrder({
+        item_id: itemId,
+        qty: selectedQuantity,
+        additional_notes: null
+      }, user.id);
 
       if (result.success) {
         const currentItem = items.find(item => item.item_id === itemId);
