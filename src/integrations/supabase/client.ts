@@ -5,13 +5,89 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+// Mock Supabase client for development/demo purposes
+const createMockSupabase = () => ({
   auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
+    signInWithPassword: async (credentials: any) => {
+      // Mock successful login for demo purposes
+      return {
+        data: {
+          user: { 
+            id: 'mock-user-id', 
+            email: credentials.email,
+            user_metadata: { username: credentials.email.split('@')[0] }
+          },
+          session: { access_token: 'mock-token' }
+        },
+        error: null
+      };
+    },
+    signUp: async (credentials: any) => {
+      return {
+        data: {
+          user: { 
+            id: 'mock-user-id', 
+            email: credentials.email,
+            user_metadata: credentials.options?.data,
+            email_confirmed_at: new Date().toISOString()
+          },
+          session: { access_token: 'mock-token' }
+        },
+        error: null
+      };
+    },
+    signOut: async () => ({ error: null }),
+    getSession: async () => ({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({
+      data: { subscription: { unsubscribe: () => {} } }
+    })
+  },
+  from: (table: string) => ({
+    select: () => ({
+      eq: () => ({
+        single: async () => ({
+          data: table === 'proctors' ? {
+            id: 'mock-proctor-id',
+            user_id: 'mock-user-id',
+            profile_id: 'mock-profile-id',
+            name: 'Mock Proctor',
+            specializations: ['crop_diseases', 'soil_analysis'],
+            status: 'active',
+            rating: 4.5,
+            total_cases: 10,
+            coins: 150,
+            background_check_completed: true,
+            training_completed: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          } : null,
+          error: null
+        })
+      })
+    }),
+    insert: async () => ({ error: null })
+  })
 });
+
+// Use mock client if URL is the mock URL or if creation fails
+let supabase: any;
+
+if (SUPABASE_URL?.includes('mock-supabase-url') || !SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  console.warn('Using mock Supabase client for development');
+  supabase = createMockSupabase();
+} else {
+  try {
+    supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: {
+        storage: localStorage,
+        persistSession: true,
+        autoRefreshToken: true,
+      }
+    });
+  } catch (error) {
+    console.error('Failed to create Supabase client, using mock:', error);
+    supabase = createMockSupabase();
+  }
+}
+
+export { supabase };
