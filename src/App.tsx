@@ -100,7 +100,7 @@ const App = () => {
                   <ProctorAuth />
                 </div>
               } />
-              <Route path="/proctor/dashboard" element={
+              <Route path="/proctor" element={
                 <div className="min-h-screen bg-background">
                   <Header />
                   <ProctorDashboard />

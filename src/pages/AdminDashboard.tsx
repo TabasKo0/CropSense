@@ -14,10 +14,10 @@ const AdminDashboard = () => {
   
   // Available database tables
   const tables = [
-    { name: "users", label: "Users", description: "User accounts and authentication" },
-    { name: "profiles", label: "Profiles", description: "User profile information" },
+    { name: "items", label: "Users", description: "User accounts and authentication" },
+    { name: "orders", label: "Profiles", description: "User profile information" },
     { name: "reports", label: "Reports", description: "User reports and incidents" },
-    { name: "proctors", label: "Proctors", description: "Proctor management" },
+    { name: "userdata", label: "Proctors", description: "Proctor management" },
   
 
   ];

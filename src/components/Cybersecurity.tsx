@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Shield, AlertTriangle, Phone, Mail, Clock, Users, Lock, FileText } from "lucide-react";
-
+import { supabase } from "@/integrations/supabase/client";
 const Cybersecurity = () => {
   const [formData, setFormData] = useState({
     title: "",
@@ -38,17 +38,36 @@ const Cybersecurity = () => {
     setIsSubmitting(true);
     
     // Simulate form submission
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const { data, error } = await supabase
+      .from('reports')
+      .insert([
+        {
+        title: formData.title,
+        desp: formData.description,
+        prio: formData.urgency,
+        contact_phone: formData.contactPhone,
+        },
+      ]);
+
+      if (error) {
+      throw error;
+      }
+
       alert("Support request submitted successfully!");
       setFormData({
-        title: "",
-        description: "",
-        urgency: "",
-        contactPhone: ""
+      title: "",
+      description: "",
+      urgency: "",
+      contactPhone: ""
       });
-    }, 2000);
-  };
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      alert("Failed to submit request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+    };
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {

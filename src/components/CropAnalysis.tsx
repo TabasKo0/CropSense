@@ -8,24 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MapPin, Thermometer, Droplets, Zap, Calendar, TrendingUp, Cloud, RefreshCw, Leaf, Camera, BarChart3 } from "lucide-react";
 import { useWeather } from "@/hooks/useWeather";
 import { useEffect, useState } from "react";
-<<<<<<< HEAD
-import { loggingService, LOG_TYPES, logModelSuccess, logModelError } from "@/services/loggingService";
-=======
-import { logAPI } from "@/api/routes/log";
-import { useAuth } from "@/contexts/AuthContext";
->>>>>>> b936d121ee9ebf67bd484e201dab682e1e2aafa9
 
 const CropAnalysis = () => {
-  // Log type constants (editable)
-  const LOG_TYPES = {
-    CROP_RECOMMENDATION: 'crop-recommendation',
-    DISEASE_DETECTION: 'disease-detection', 
-    YIELD_PREDICTION: 'yield-prediction'
-  };
-
-  // Auth context for user ID
-  const { user } = useAuth();
-
   // Weather API Integration
   // DURATION PARAMETERS: Configure in src/services/weatherService.ts
   // - FORECAST_DAYS: Number of forecast days
@@ -123,10 +107,7 @@ const CropAnalysis = () => {
   const handleModel1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(prev => ({ ...prev, model1: true }));
-
-    const startTime = Date.now();
-    const logType = LOG_TYPES.CROP_RECOMMENDATION; // EDITABLE: Change log type here
-
+    
     try {
       const response = await fetch('http://127.0.0.1:5000/run_model1', {
         method: 'POST',
@@ -135,52 +116,11 @@ const CropAnalysis = () => {
         },
         body: JSON.stringify(model1Form)
       });
-
+      
       const result = await response.json();
-
-      // Log successful model call
-      await logModelSuccess(
-        logType,
-        {
-          endpoint: 'run_model1',
-          method: 'POST',
-          formData: model1Form,
-          weatherData: weatherData?.current ? {
-            temperature: weatherData.current.temperature,
-            humidity: weatherData.current.humidity,
-            rainfall: weatherData.current.rainfall
-          } : null
-        },
-        {
-          status: response.status,
-          success: result.success || true,
-          output: result.output,
-          rawResponse: result
-        },
-        Date.now() - startTime
-      );
-
       setResults(prev => ({ ...prev, model1: result.output || 'No crop returned' }));
     } catch (error) {
       console.error('Model 1 Error:', error);
-
-      // Log failed model call
-      await logModelError(
-        logType,
-        {
-          endpoint: 'run_model1',
-          method: 'POST',
-          formData: model1Form,
-          weatherData: weatherData?.current ? {
-            temperature: weatherData.current.temperature,
-            humidity: weatherData.current.humidity,
-            rainfall: weatherData.current.rainfall
-          } : null
-        },
-        error instanceof Error ? error : 'Unknown error occurred',
-        Date.now() - startTime
-      );
-
       setResults(prev => ({ ...prev, model1: 'Error! Check console for details.' }));
     } finally {
       setLoading(prev => ({ ...prev, model1: false }));
@@ -190,126 +130,27 @@ const CropAnalysis = () => {
   const handleModel2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(prev => ({ ...prev, model2: true }));
-
-    const startTime = Date.now();
-    const logType = LOG_TYPES.DISEASE_DETECTION; // EDITABLE: Change log type here
-
+    
     if (!model2Form.image) {
-      const errorMsg = 'Please select an image';
-      setResults(prev => ({ ...prev, model2: errorMsg }));
-
-      // Log validation error
-      await logModelError(
-        logType,
-        {
-          endpoint: 'run_model2',
-          method: 'POST',
-          formData: { image: null },
-          validationError: 'No image selected'
-        },
-        errorMsg,
-        Date.now() - startTime
-      );
-
+      setResults(prev => ({ ...prev, model2: 'Please select an image' }));
       setLoading(prev => ({ ...prev, model2: false }));
       return;
     }
-
+    
     try {
       const formData = new FormData();
       formData.append('image', model2Form.image);
-
+      
       const response = await fetch('http://127.0.0.1:5000/run_model2', {
         method: 'POST',
         body: formData
       });
-
+      
       const result = await response.json();
-<<<<<<< HEAD
-
-      // Log successful model call
-      await logModelSuccess(
-        logType,
-        {
-          endpoint: 'run_model2',
-          method: 'POST',
-          imageData: {
-            name: model2Form.image.name,
-            size: model2Form.image.size,
-            type: model2Form.image.type,
-            lastModified: new Date(model2Form.image.lastModified).toISOString()
-          },
-          weatherData: weatherData?.current ? {
-            temperature: weatherData.current.temperature,
-            humidity: weatherData.current.humidity,
-            rainfall: weatherData.current.rainfall
-          } : null
-        },
-        {
-          status: response.status,
-          success: result.success || true,
-          output: result.output,
-          rawResponse: result
-        },
-        Date.now() - startTime
-      );
-
       setResults(prev => ({ ...prev, model2: result.output || 'No output returned' }));
     } catch (error) {
       console.error('Model 2 Error:', error);
-
-      // Log failed model call
-      await logModelError(
-        logType,
-        {
-          endpoint: 'run_model2',
-          method: 'POST',
-          imageData: model2Form.image ? {
-            name: model2Form.image.name,
-            size: model2Form.image.size,
-            type: model2Form.image.type
-          } : null
-        },
-        error instanceof Error ? error : 'Unknown error occurred',
-        Date.now() - startTime
-      );
-
       setResults(prev => ({ ...prev, model2: 'Error occurred' }));
-=======
-      const output = result.output || 'No output returned';
-      setResults(prev => ({ ...prev, model2: output }));
-      
-      // Log the interaction
-      if (user?.id) {
-        const logEntry = {
-          parameters: { 
-            imageName: model2Form.image.name,
-            imageSize: model2Form.image.size,
-            imageType: model2Form.image.type
-          },
-          response: { output, timestamp: new Date().toISOString() },
-          endpoint: 'http://127.0.0.1:5000/run_model2',
-          status: 'success'
-        };
-        
-        await logAPI.createLog({
-          type: LOG_TYPES.DISEASE_DETECTION,
-          log: `Disease Detection Analysis\n\nImage Details:\n- Name: ${model2Form.image.name}\n- Size: ${(model2Form.image.size / 1024).toFixed(2)} KB\n- Type: ${model2Form.image.type}\n\nResponse:\n${JSON.stringify({ output }, null, 2)}\n\nTimestamp: ${new Date().toLocaleString()}`
-        }, user.id);
-      }
-    } catch (error) {
-      console.error('Model 2 Error:', error);
-      const errorMsg = 'Error occurred';
-      setResults(prev => ({ ...prev, model2: errorMsg }));
-      
-      // Log the error
-      if (user?.id) {
-        await logAPI.createLog({
-          type: LOG_TYPES.DISEASE_DETECTION,
-          log: `Disease Detection Analysis - ERROR\n\nImage Details:\n- Name: ${model2Form.image?.name || 'Unknown'}\n- Size: ${model2Form.image ? (model2Form.image.size / 1024).toFixed(2) + ' KB' : 'Unknown'}\n- Type: ${model2Form.image?.type || 'Unknown'}\n\nError:\n${error.message || error}\n\nTimestamp: ${new Date().toLocaleString()}`
-        }, user.id);
-      }
->>>>>>> b936d121ee9ebf67bd484e201dab682e1e2aafa9
     } finally {
       setLoading(prev => ({ ...prev, model2: false }));
     }
@@ -318,10 +159,7 @@ const CropAnalysis = () => {
   const handleModel3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(prev => ({ ...prev, model3: true }));
-
-    const startTime = Date.now();
-    const logType = LOG_TYPES.YIELD_PREDICTION; // EDITABLE: Change log type here
-
+    
     try {
       const response = await fetch('http://127.0.0.1:5000/model3', {
         method: 'POST',
@@ -330,90 +168,12 @@ const CropAnalysis = () => {
         },
         body: JSON.stringify(model3Form)
       });
-
+      
       const result = await response.json();
-<<<<<<< HEAD
-
-      // Log successful model call
-      await logModelSuccess(
-        logType,
-        {
-          endpoint: 'model3',
-          method: 'POST',
-          formData: model3Form,
-          weatherData: weatherData?.current ? {
-            temperature: weatherData.current.temperature,
-            humidity: weatherData.current.humidity,
-            rainfall: weatherData.current.rainfall
-          } : null,
-          calculatedFields: {
-            totalProduction: model3Form.production_bags * model3Form.bag_weight,
-            yieldPerAcre: model3Form.area_acres > 0 ?
-              (model3Form.production_bags * model3Form.bag_weight) / model3Form.area_acres : 0
-          }
-        },
-        {
-          status: response.status,
-          success: result.success || true,
-          prediction: result.prediction,
-          rawResponse: result
-        },
-        Date.now() - startTime
-      );
-
       setResults(prev => ({ ...prev, model3: result.prediction || 'No prediction returned' }));
     } catch (error) {
       console.error('Model 3 Error:', error);
-
-      // Log failed model call
-      await logModelError(
-        logType,
-        {
-          endpoint: 'model3',
-          method: 'POST',
-          formData: model3Form,
-          weatherData: weatherData?.current ? {
-            temperature: weatherData.current.temperature,
-            humidity: weatherData.current.humidity,
-            rainfall: weatherData.current.rainfall
-          } : null
-        },
-        error instanceof Error ? error : 'Unknown error occurred',
-        Date.now() - startTime
-      );
-
       setResults(prev => ({ ...prev, model3: 'Error! Check console for details.' }));
-=======
-      const prediction = result.prediction || 'No prediction returned';
-      setResults(prev => ({ ...prev, model3: prediction }));
-      
-      // Log the interaction
-      if (user?.id) {
-        const logEntry = {
-          parameters: model3Form,
-          response: { prediction, timestamp: new Date().toISOString() },
-          endpoint: 'http://127.0.0.1:5000/model3',
-          status: 'success'
-        };
-        
-        await logAPI.createLog({
-          type: LOG_TYPES.YIELD_PREDICTION,
-          log: `Yield Prediction Analysis\n\nParameters:\n${JSON.stringify(model3Form, null, 2)}\n\nResponse:\n${JSON.stringify({ prediction }, null, 2)}\n\nTimestamp: ${new Date().toLocaleString()}`
-        }, user.id);
-      }
-    } catch (error) {
-      console.error('Model 3 Error:', error);
-      const errorMsg = 'Error! Check console for details.';
-      setResults(prev => ({ ...prev, model3: errorMsg }));
-      
-      // Log the error
-      if (user?.id) {
-        await logAPI.createLog({
-          type: LOG_TYPES.YIELD_PREDICTION,
-          log: `Yield Prediction Analysis - ERROR\n\nParameters:\n${JSON.stringify(model3Form, null, 2)}\n\nError:\n${error.message || error}\n\nTimestamp: ${new Date().toLocaleString()}`
-        }, user.id);
-      }
->>>>>>> b936d121ee9ebf67bd484e201dab682e1e2aafa9
     } finally {
       setLoading(prev => ({ ...prev, model3: false }));
     }
