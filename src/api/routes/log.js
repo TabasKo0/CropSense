@@ -1,19 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import express from 'express';
+import { runQuery, getRow, getAllRows } from '../database.js';
 
-// Supabase configuration using environment variables
-const SUPABASE_URL =
-    import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const router = express.Router();
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Log API - Direct Supabase calls
-export const logAPI = {
+// Log API - Direct SQLite calls
+const logAPI = {
     // POST - Create a new log entry
     async createLog(logData, userId) {
         try {
@@ -35,21 +26,13 @@ export const logAPI = {
             }
 
             // Insert log entry into predictions table
-            const { data, error } = await supabase
-                .from('predictions')
-                .insert([{
-                    type: type.toString(),
-                    log: log.toString(),
-                    uuid: userId,
-                    created_at: new Date().toISOString()
-                }])
-                .select()
-                .single();
+            const result = await runQuery(
+                'INSERT INTO predictions (type, log, uuid, created_at) VALUES (?, ?, ?, ?)',
+                [type.toString(), log.toString(), userId, new Date().toISOString()]
+            );
 
-            if (error) {
-                console.error('Log creation error:', error);
-                throw new Error(error.message);
-            }
+            // Get the created log entry
+            const data = await getRow('SELECT * FROM predictions WHERE id = ?', [result.lastID]);
 
             return {
                 success: true,
@@ -76,16 +59,10 @@ export const logAPI = {
                 };
             }
 
-            const { data, error } = await supabase
-                .from('predictions')
-                .select('*')
-                .eq('uuid', userId)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Logs fetch error:', error);
-                throw new Error(error.message);
-            }
+            const data = await getAllRows(
+                'SELECT * FROM predictions WHERE uuid = ? ORDER BY created_at DESC',
+                [userId]
+            );
 
             return {
                 success: true,
@@ -121,17 +98,10 @@ export const logAPI = {
                 };
             }
 
-            const { data, error } = await supabase
-                .from('predictions')
-                .select('*')
-                .eq('uuid', userId)
-                .eq('type', logType)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Logs fetch error:', error);
-                throw new Error(error.message);
-            }
+            const data = await getAllRows(
+                'SELECT * FROM predictions WHERE uuid = ? AND type = ? ORDER BY created_at DESC',
+                [userId, logType]
+            );
 
             return {
                 success: true,
@@ -151,4 +121,31 @@ export const logAPI = {
     }
 };
 
-export default logAPI;
+// Express routes using the logAPI
+router.post('/', async (req, res) => {
+    const { userId, ...logData } = req.body;
+    
+    if (!userId) {
+        return res.status(400).json({
+            success: false,
+            error: 'User ID required'
+        });
+    }
+    
+    const result = await logAPI.createLog(logData, userId);
+    res.json(result);
+});
+
+router.get('/user/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const result = await logAPI.getUserLogs(userId);
+    res.json(result);
+});
+
+router.get('/user/:userId/type/:logType', async (req, res) => {
+    const { userId, logType } = req.params;
+    const result = await logAPI.getLogsByType(userId, logType);
+    res.json(result);
+});
+
+export default router;
