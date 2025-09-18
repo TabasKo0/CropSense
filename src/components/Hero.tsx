@@ -37,9 +37,7 @@ const Hero = () => {
               Start Analysis
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button></Link>
-            <Link to="/watch-demo"><Button variant="outline" size="lg" className="text-lg px-8">
-              Watch Demo
-            </Button></Link>
+           
           </div>
           
           {/* Features Grid */}

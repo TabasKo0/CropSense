@@ -31,11 +31,29 @@ const DatabaseTable = ({ tableName }: DatabaseTableProps) => {
       setError("");
       
       // Fetch data from Supabase
-      const { data: tableData, error: fetchError } = await supabase
+      // First, check if created_at column exists
+      const { data: sampleData, error: sampleError } = await supabase
         .from(tableName)
         .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100); // Limit to 100 records for performance
+        .limit(1);
+
+      if (sampleError) {
+        console.error('Supabase sample fetch error:', sampleError);
+        setError(`Failed to load table: ${sampleError.message}`);
+        return;
+      }
+
+      let hasCreatedAt = false;
+      if (sampleData && sampleData.length > 0) {
+        hasCreatedAt = 'created_at' in sampleData[0];
+      }
+
+      // Now fetch the data
+      let query = supabase.from(tableName).select('*');
+      if (hasCreatedAt) {
+        query = query.order('created_at', { ascending: false });
+      }
+      const { data: tableData, error: fetchError } = await query.limit(100);
       
       if (fetchError) {
         console.error('Supabase fetch error:', fetchError);
@@ -45,7 +63,8 @@ const DatabaseTable = ({ tableName }: DatabaseTableProps) => {
       
       if (tableData && tableData.length > 0) {
         setData(tableData);
-        setColumns(Object.keys(tableData[0]));
+        // Filter out 'password' column from display
+        setColumns(Object.keys(tableData[0]).filter(col => col !== 'password'));
       } else {
         setData([]);
         setColumns([]);

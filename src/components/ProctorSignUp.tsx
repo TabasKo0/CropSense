@@ -111,7 +111,7 @@ const ProctorSignUp = ({ onSuccess, onSwitchToSignIn }: ProctorSignUpProps) => {
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
-            user_id: data.user.id,
+            uuid: data.user.id,
             full_name: formData.name,
             role: 'proctor'
           });

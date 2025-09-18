@@ -14,10 +14,10 @@ const AdminDashboard = () => {
   
   // Available database tables
   const tables = [
-    { name: "items", label: "Users", description: "User accounts and authentication" },
-    { name: "orders", label: "Profiles", description: "User profile information" },
+    { name: "items", label: "Items", description: "" },
+    { name: "orders", label: "Orders", description: "" },
     { name: "reports", label: "Reports", description: "User reports and incidents" },
-    { name: "userdata", label: "Proctors", description: "Proctor management" },
+    { name: "userdata", label: "Users", description: "Users" },
   
 
   ];
@@ -85,7 +85,7 @@ const AdminDashboard = () => {
                 Database Management
               </CardTitle>
               <CardDescription>
-                View and edit all database tables. Click on any cell to edit its value.
+                View all database tables.
               </CardDescription>
             </CardHeader>
           </Card>
