@@ -1,8 +1,8 @@
 import express from 'express';
-import { createClient } from '@supabase/supabase-js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { runQuery, getRow, getAllRows } from '../database.js';
 
 // Load environment variables
 dotenv.config();
@@ -11,7 +11,7 @@ const router = express.Router();
 
 // Configuration validation function
 const validateEnvironmentConfig = () => {
-    const requiredVars = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'JWT_SECRET'];
+    const requiredVars = ['JWT_SECRET'];
     const missing = requiredVars.filter(varName => !process.env[varName]);
 
     if (missing.length > 0) {
@@ -27,21 +27,6 @@ const validateEnvironmentConfig = () => {
 
 // Validate configuration on module load
 validateEnvironmentConfig();
-
-// Supabase configuration - Now using environment variables
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-// Validate required environment variables
-if (!SUPABASE_URL) {
-    throw new Error('SUPABASE_URL environment variable is required');
-}
-
-if (!SUPABASE_SERVICE_KEY) {
-    throw new Error('SUPABASE_SERVICE_KEY environment variable is required');
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // JWT secret - Now using environment variable with validation
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -110,11 +95,10 @@ router.post('/signup', async(req, res) => {
         }
 
         // Check if user already exists
-        const { data: existingUser, error: checkError } = await supabase
-            .from('users')
-            .select('id, username, email')
-            .or(`username.eq.${username},email.eq.${email}`)
-            .single();
+        const existingUser = await getRow(
+            'SELECT id, username, email FROM users WHERE username = ? OR email = ?',
+            [username, email]
+        );
 
         if (existingUser) {
             return res.status(409).json({
@@ -127,21 +111,19 @@ router.post('/signup', async(req, res) => {
         // Hash password
         const hashedPassword = await hashPassword(password);
 
-        // Create user in Supabase
-        const { data: newUser, error: createError } = await supabase
-            .from('users')
-            .insert([{
-                username,
-                email,
-                password_hash: hashedPassword,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }])
-            .select('id, username, email, created_at')
-            .single();
+        // Create user in SQLite
+        const result = await runQuery(
+            'INSERT INTO users (username, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+            [username, email, hashedPassword, new Date().toISOString(), new Date().toISOString()]
+        );
 
-        if (createError) {
-            console.error('Supabase create error:', createError);
+        // Get the created user
+        const newUser = await getRow(
+            'SELECT id, username, email, created_at FROM users WHERE id = ?',
+            [result.lastID]
+        );
+
+        if (!newUser) {
             return res.status(500).json({
                 success: false,
                 error: 'Failed to create user account',
@@ -191,14 +173,13 @@ router.post('/signin', async(req, res) => {
             });
         }
 
-        // Find user in Supabase (allow login with username or email)
-        const { data: user, error: findError } = await supabase
-            .from('users')
-            .select('id, username, email, password_hash, created_at, updated_at')
-            .or(`username.eq.${username},email.eq.${username}`)
-            .single();
+        // Find user in SQLite (allow login with username or email)
+        const user = await getRow(
+            'SELECT id, username, email, password_hash, created_at, updated_at FROM users WHERE username = ? OR email = ?',
+            [username, username]
+        );
 
-        if (findError || !user) {
+        if (!user) {
             return res.status(401).json({
                 success: false,
                 error: 'Invalid username or password',
@@ -218,13 +199,10 @@ router.post('/signin', async(req, res) => {
         }
 
         // Update last login time
-        await supabase
-            .from('users')
-            .update({
-                last_login: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
+        await runQuery(
+            'UPDATE users SET last_login = ?, updated_at = ? WHERE id = ?',
+            [new Date().toISOString(), new Date().toISOString(), user.id]
+        );
 
         // Generate JWT token
         const token = generateToken(user);
@@ -272,14 +250,13 @@ router.get('/profile', async(req, res) => {
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
 
-            // Get updated user data from Supabase
-            const { data: user, error: findError } = await supabase
-                .from('users')
-                .select('id, username, email, created_at, last_login')
-                .eq('id', decoded.id)
-                .single();
+            // Get updated user data from SQLite
+            const user = await getRow(
+                'SELECT id, username, email, created_at, last_login FROM users WHERE id = ?',
+                [decoded.id]
+            );
 
-            if (findError || !user) {
+            if (!user) {
                 return res.status(401).json({
                     success: false,
                     error: 'User not found',

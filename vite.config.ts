@@ -15,4 +15,21 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      external: [
+        // Exclude API folder from frontend build
+        /^\/.*\/api\//,
+        /^.*\/api\//,
+        'sqlite3',
+        'express',
+        'cors',
+        'helmet',
+        'dotenv',
+        'uuid',
+        'bcryptjs',
+        'jsonwebtoken'
+      ]
+    }
+  }
 }));

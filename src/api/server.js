@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import { initDatabase } from './database.js';
 
 // Import routes
 import cropAnalysisRoutes from './routes/cropAnalysis.js';
@@ -10,6 +11,7 @@ import marketplaceRoutes from './routes/marketplace.js';
 import authRoutes from './routes/auth.js';
 import itemsRoutes from './routes/items.js';
 import ordersRoutes from './routes/orders.js';
+import logRoutes from './routes/log.js';
 
 // Load environment variables
 dotenv.config();
@@ -43,6 +45,7 @@ app.use('/api/weather', weatherRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/items', itemsRoutes);
 app.use('/api/orders', ordersRoutes);
+app.use('/api/logs', logRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -88,10 +91,23 @@ app.use((error, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`🌱 CropSense API server running on port ${PORT}`);
-    console.log(`📊 Health check: http://localhost:${PORT}/health`);
-    console.log(`🚀 API documentation: http://localhost:${PORT}/`);
-});
+const startServer = async () => {
+    try {
+        // Initialize database
+        await initDatabase();
+        
+        // Start the server
+        app.listen(PORT, () => {
+            console.log(`🌱 CropSense API server running on port ${PORT}`);
+            console.log(`📊 Health check: http://localhost:${PORT}/health`);
+            console.log(`🚀 API documentation: http://localhost:${PORT}/`);
+        });
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+startServer();
 
 export default app;
