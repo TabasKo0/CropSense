@@ -3,13 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck, LogOut, Database } from "lucide-react";
+import { ShieldCheck, LogOut, Database, Loader2 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import DatabaseTable from "@/components/admin/DatabaseTable";
 
 const AdminDashboard = () => {
-  const { isAdminAuthenticated, logoutAdmin } = useAdminAuth();
+  const { isAdminAuthenticated, adminUser, logoutAdmin, loading } = useAdminAuth();
   const navigate = useNavigate();
   const [activeTable, setActiveTable] = useState("users");
   
@@ -25,15 +24,26 @@ const AdminDashboard = () => {
   ];
 
   useEffect(() => {
-    if (!isAdminAuthenticated) {
+    if (!loading && !isAdminAuthenticated) {
       navigate('/admin/login');
     }
-  }, [isAdminAuthenticated, navigate]);
+  }, [isAdminAuthenticated, loading, navigate]);
 
-  const handleLogout = () => {
-    logoutAdmin();
+  const handleLogout = async () => {
+    await logoutAdmin();
     navigate('/admin/login');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-red-600" />
+          <p className="text-muted-foreground">Loading admin dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAdminAuthenticated) {
     return null;
@@ -49,7 +59,9 @@ const AdminDashboard = () => {
               <ShieldCheck className="h-8 w-8 text-red-600" />
               <div>
                 <h1 className="text-xl font-bold text-gray-900">Admin Dashboard</h1>
-                <p className="text-sm text-gray-500">CropSense Database Management</p>
+                <p className="text-sm text-gray-500">
+                  Welcome {adminUser?.full_name || adminUser?.email} - CropSense Database Management
+                </p>
               </div>
             </div>
             <Button 

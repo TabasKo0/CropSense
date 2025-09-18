@@ -10,7 +10,9 @@ interface Proctor {
   status: string;
   rating: number;
   total_cases: number;
-  coins?: number;
+  coins?: number; // Calculated based on completed cases for now
+  bio?: string;
+  languages?: string[];
   background_check_completed?: boolean;
   training_completed?: boolean;
   created_at: string;
@@ -64,7 +66,9 @@ export const ProctorAuthProvider = ({ children }: ProctorAuthProviderProps) => {
         status: proctorData.status || 'active',
         rating: proctorData.rating || 0,
         total_cases: proctorData.total_cases || 0,
-        coins: proctorData.coins || 0,
+        coins: (proctorData.total_cases || 0) * 10, // 10 coins per completed case
+        bio: proctorData.bio,
+        languages: proctorData.languages,
         background_check_completed: proctorData.background_check_completed,
         training_completed: proctorData.training_completed,
         created_at: proctorData.created_at,
@@ -114,7 +118,9 @@ export const ProctorAuthProvider = ({ children }: ProctorAuthProviderProps) => {
               status: proctorData.status || 'active',
               rating: proctorData.rating || 0,
               total_cases: proctorData.total_cases || 0,
-              coins: proctorData.coins || 0,
+              coins: (proctorData.total_cases || 0) * 10, // 10 coins per completed case
+              bio: proctorData.bio,
+              languages: proctorData.languages,
               background_check_completed: proctorData.background_check_completed,
               training_completed: proctorData.training_completed,
               created_at: proctorData.created_at,
@@ -160,7 +166,9 @@ export const ProctorAuthProvider = ({ children }: ProctorAuthProviderProps) => {
               status: proctorData.status || 'active',
               rating: proctorData.rating || 0,
               total_cases: proctorData.total_cases || 0,
-              coins: proctorData.coins || 0,
+              coins: (proctorData.total_cases || 0) * 10, // 10 coins per completed case
+              bio: proctorData.bio,
+              languages: proctorData.languages,
               background_check_completed: proctorData.background_check_completed,
               training_completed: proctorData.training_completed,
               created_at: proctorData.created_at,
