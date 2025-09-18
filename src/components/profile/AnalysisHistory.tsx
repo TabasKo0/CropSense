@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BarChart3, TrendingUp, Download, Eye, Satellite, Activity, Leaf, Bug, XCircle } from "lucide-react";
+import { logAPI } from "@/api/routes/log";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface LogEntry {
@@ -35,11 +36,7 @@ const AnalysisHistory = () => {
       
       try {
         setLoading(true);
-        
-        // Use direct API call for logs
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${API_BASE_URL}/logs/user/${user.id}`);
-        const result = await response.json();
+        const result = await logAPI.getUserLogs(user.id);
         
         if (result.success) {
           const parsedLogs = result.logs.map(parseLogEntry);
