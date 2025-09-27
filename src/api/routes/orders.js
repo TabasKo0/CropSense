@@ -1,10 +1,19 @@
-import express from 'express';
-import dbManager from '../utils/database.js';
+import { createClient } from '@supabase/supabase-js';
 
-const router = express.Router();
+// Supabase configuration using environment variables
+const SUPABASE_URL =
+    import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY =
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-// Orders API - Direct SQLite calls
-const ordersAPI = {
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Orders API - Direct Supabase calls
+export const ordersAPI = {
     // POST - Place a new order
     async placeOrder(orderData, userId) {
         try {
@@ -27,10 +36,19 @@ const ordersAPI = {
             //console.log(item_id);
 
             // First, get the current item data to check stock availability
-            const itemData = await dbManager.get(
-                'SELECT sold, qty FROM items WHERE item_id = ?',
-                [item_id]
-            );
+            const { data: itemData, error: fetchError } = await supabase
+                .from('items')
+                .select('sold, qty')
+                .eq('item_id', item_id)
+                .single();
+
+            if (fetchError) {
+                console.error('Failed to fetch item data:', fetchError);
+                return {
+                    success: false,
+                    error: 'Failed to verify item availability'
+                };
+            }
 
             if (!itemData) {
                 return {
@@ -52,39 +70,59 @@ const ordersAPI = {
             }
 
             // Update the sold count and sold_out status
-            let updateQuery = 'UPDATE items SET sold = ?';
-            let updateParams = [newSoldCount];
+            const updateData = {
+                sold: newSoldCount
+            };
 
             // If new sold count equals total quantity, mark as sold out
             if (totalQuantity && newSoldCount >= totalQuantity) {
-                updateQuery += ', sold = 1';
+                updateData.sold_out = true;
             }
 
-            updateQuery += ' WHERE item_id = ?';
-            updateParams.push(item_id);
+            const { error: updateError } = await supabase
+                .from('items')
+                .update(updateData)
+                .eq('item_id', item_id);
 
-            await dbManager.run(updateQuery, updateParams);
+            if (updateError) {
+                console.error('Failed to update sold count:', updateError);
+                return {
+                    success: false,
+                    error: 'Failed to update stock. Please try again.'
+                };
+            }
 
             // Only if stock update succeeds, create the order
-            const result = await dbManager.run(
-                `INSERT INTO orders (item_id, qty, uuid, progress, created_at, updated_at) 
-                 VALUES (?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-                [item_id, parseInt(qty), userId]
-            );
+            const { data, error } = await supabase
+                .from('orders')
+                .insert([{
+                    item_id: item_id,
+                    qty: parseInt(qty),
+                    uuid: userId,
+                    progress: 'pending',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
 
-            // Get the created order
-            const data = await dbManager.get(
-                'SELECT * FROM orders WHERE rowid = ?',
-                [result.lastID]
-            );
+            if (error) {
+                console.error('Order creation error:', error);
 
-            if (!data) {
                 // Rollback the sold count update since order creation failed
-                await dbManager.run(
-                    'UPDATE items SET sold = ? WHERE item_id = ?',
-                    [currentSold, item_id]
-                );
-                throw new Error('Failed to retrieve created order');
+                const rollbackData = {
+                    sold: currentSold
+                };
+                if (totalQuantity && currentSold < totalQuantity) {
+                    rollbackData.sold_out = false;
+                }
+
+                await supabase
+                    .from('items')
+                    .update(rollbackData)
+                    .eq('item_id', item_id);
+
+                throw new Error(error.message);
             }
 
             return {
@@ -106,10 +144,16 @@ const ordersAPI = {
     async getUserOrders(userId) {
         try {
             // First, get orders with basic data (item_id, quantity, status)
-            const ordersData = await dbManager.all(
-                'SELECT order_id, item_id, qty, progress, created_at, updated_at FROM orders WHERE uuid = ? ORDER BY created_at DESC',
-                [userId]
-            );
+            const { data: ordersData, error: ordersError } = await supabase
+                .from('orders')
+                .select('order_id, item_id, qty, progress, created_at, updated_at')
+                .eq('uuid', userId)
+                .order('created_at', { ascending: false });
+
+            if (ordersError) {
+                console.error('Orders fetch error:', ordersError);
+                throw new Error(ordersError.message);
+            }
 
             if (!ordersData || ordersData.length === 0) {
                 return {
@@ -122,15 +166,16 @@ const ordersAPI = {
             // Extract unique item_ids to fetch item details
             const itemIds = [...new Set(ordersData.map(order => order.item_id))];
             console.log(itemIds);
-            
             // Fetch item details for all item_ids
-            const placeholders = itemIds.map(() => '?').join(',');
-            const itemsData = await dbManager.all(
-                `SELECT item_id, title, price, type, description, image_link FROM items WHERE item_id IN (${placeholders})`,
-                itemIds
-            );
-            
+            const { data: itemsData, error: itemsError } = await supabase
+                .from('items')
+                .select('item_id, title, price, type, desp, type, image_link')
+                .in('item_id', itemIds);
             console.log("Fetched item details:", itemsData);
+            if (itemsError) {
+                console.error('Items fetch error:', itemsError);
+                // Continue without item details if items fetch fails
+            }
 
             // Map item details to orders
             const ordersWithItems = ordersData.map(order => {
@@ -145,7 +190,7 @@ const ordersAPI = {
                         title: itemDetails.title,
                         price: itemDetails.price,
                         type: itemDetails.type,
-                        desp: itemDetails.description,
+                        desp: itemDetails.desp,
                         image_url: itemDetails.image_link,
                         farmer_name: itemDetails.farmer_name
                     } : null
@@ -171,59 +216,4 @@ const ordersAPI = {
     }
 };
 
-// Express routes that use the ordersAPI
-// POST /api/orders - Place a new order
-router.post('/', async (req, res) => {
-    try {
-        const userId = req.headers['x-user-id']; // Simple auth for now
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                error: 'Authentication required'
-            });
-        }
-
-        const result = await ordersAPI.placeOrder(req.body, userId);
-        
-        if (result.success) {
-            res.status(201).json(result);
-        } else {
-            res.status(400).json(result);
-        }
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Internal server error',
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-// GET /api/orders - Get user orders
-router.get('/', async (req, res) => {
-    try {
-        const userId = req.headers['x-user-id']; // Simple auth for now
-        if (!userId) {
-            return res.status(401).json({
-                success: false,
-                error: 'Authentication required'
-            });
-        }
-
-        const result = await ordersAPI.getUserOrders(userId);
-        
-        if (result.success) {
-            res.json(result);
-        } else {
-            res.status(400).json(result);
-        }
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: 'Internal server error',
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-export default router;
+export default ordersAPI;
